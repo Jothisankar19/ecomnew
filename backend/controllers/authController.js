@@ -34,38 +34,19 @@ exports.register = async (req, res) => {
     if (existingUser) {
       return res.status(400).json({ success: false, message: 'Email already registered' });
     }
-    const user = await User.create({ name, email, password, phone });
-    // Send OTP for verification
-    const otp = user.generateOTP();
-    await user.save();
-    try {
-      await sendEmail({
-        from: `"Kurti Elegance" <${process.env.EMAIL_USER}>`,
-        to: email,
-        subject: 'Verify Your Email - Kurti Elegance',
-        html: `<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:20px;background:#f9f9f9">
-          <h2 style="color:#D4AF37;text-align:center">Welcome to Kurti Elegance!</h2>
-          <p>Your OTP for email verification is:</p>
-          <h1 style="color:#D4AF37;text-align:center;font-size:48px;letter-spacing:10px">${otp}</h1>
-          <p>This OTP is valid for 10 minutes.</p>
-        </div>`
-      });
-    } catch (emailErr) {
-      console.log('OTP Email send failed:', emailErr.message);
-    }
 
-    // Send Welcome Notification
-    try {
-      await sendEmail({
-        from: `"Kurti Elegance" <${process.env.EMAIL_USER}>`,
-        to: email,
-        subject: 'Welcome to Kurti Elegance!',
-        html: getWelcomeTemplate({ name, email })
-      });
-    } catch (welcomeErr) {
-      console.log('Welcome Email send failed:', welcomeErr.message);
-    }
-    sendToken(user, 201, res, 'Registration successful! Please verify your email.');
+    // Create user — verified immediately, no OTP needed
+    const user = await User.create({ name, email, password, phone, isVerified: true });
+
+    // Send welcome email in background (non-blocking, won't crash if email fails)
+    sendEmail({
+      from: `"Kurti Elegance" <${process.env.EMAIL_USER}>`,
+      to: email,
+      subject: 'Welcome to Kurti Elegance!',
+      html: getWelcomeTemplate({ name, email })
+    }).catch(() => {});
+
+    sendToken(user, 201, res, `Welcome to Kurti Elegance, ${name}! Your account is ready.`);
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
