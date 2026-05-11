@@ -1,0 +1,13 @@
+User-agent: *
+Allow: /
+
+# Sitemap
+Sitemap: https://kurtielegance.com/sitemap.xml
+
+# Disallow admin and private routes
+Disallow: /admin/
+Disallow: /profile
+Disallow: /checkout
+Disallow: /orders
+Disallow: /cart
+Disallow: /wishlist

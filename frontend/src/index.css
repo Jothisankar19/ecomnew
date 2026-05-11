@@ -1,0 +1,292 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
+  html {
+    scroll-behavior: smooth;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    font-family: 'Inter', sans-serif;
+    background-color: #ffffff;
+    color: #1a1a1a;
+    overflow-x: hidden;
+  }
+
+  ::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: #f5f5f5;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: #D4AF37;
+    border-radius: 3px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: #b8941e;
+  }
+
+  ::selection {
+    background: rgba(212, 175, 55, 0.3);
+    color: #000;
+  }
+}
+
+@layer components {
+  .glass {
+    @apply bg-white/80 backdrop-blur-md border border-gray-200;
+  }
+
+  .glass-dark {
+    @apply bg-white/90 backdrop-blur-md border border-gray-200;
+  }
+
+  .glass-gold {
+    @apply bg-yellow-50 backdrop-blur-md border border-yellow-200;
+  }
+
+  .btn-primary {
+    @apply bg-gradient-to-r from-yellow-600 to-yellow-400 text-white font-semibold px-6 py-3 rounded-full
+           hover:from-yellow-500 hover:to-yellow-300 transition-all duration-300
+           shadow-lg hover:shadow-yellow-500/25 hover:scale-105 active:scale-95;
+  }
+
+  .btn-secondary {
+    @apply border border-yellow-500 text-yellow-600 font-semibold px-6 py-3 rounded-full
+           hover:bg-yellow-50 transition-all duration-300 hover:border-yellow-600;
+  }
+
+  .btn-ghost {
+    @apply text-gray-500 hover:text-gray-800 transition-colors duration-200;
+  }
+
+  .card-luxury {
+    @apply bg-white border border-gray-100 rounded-2xl overflow-hidden
+           hover:border-yellow-300 transition-all duration-500
+           hover:shadow-[0_20px_60px_rgba(212,175,55,0.15)];
+  }
+
+  .text-gradient-gold {
+    @apply bg-gradient-to-r from-yellow-600 via-yellow-500 to-yellow-700 bg-clip-text text-transparent;
+  }
+
+  .text-gradient-rose {
+    @apply bg-gradient-to-r from-pink-500 via-rose-400 to-pink-600 bg-clip-text text-transparent;
+  }
+
+  .section-title {
+    @apply font-display text-4xl md:text-5xl font-bold text-gradient-gold mb-4;
+  }
+
+  .input-luxury {
+    @apply w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-gray-800
+           placeholder-gray-400 focus:outline-none focus:border-yellow-400 focus:bg-white
+           transition-all duration-300;
+  }
+
+  .skeleton {
+    @apply bg-gradient-to-r from-gray-100 via-gray-200 to-gray-100 animate-shimmer;
+    background-size: 200% 100%;
+  }
+
+  .badge-new {
+    @apply bg-green-500 text-white text-xs font-bold px-2 py-0.5 rounded-full;
+  }
+
+  .badge-sale {
+    @apply bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full;
+  }
+
+  .badge-trending {
+    @apply bg-gradient-to-r from-orange-500 to-pink-500 text-white text-xs font-bold px-2 py-0.5 rounded-full;
+  }
+
+  .product-card {
+    @apply relative overflow-hidden rounded-2xl bg-white
+           border border-gray-100 cursor-pointer
+           hover:border-yellow-300 transition-all duration-500
+           hover:shadow-[0_20px_60px_rgba(0,0,0,0.1)];
+  }
+
+  .nav-link {
+    @apply text-gray-600 hover:text-gray-900 transition-colors duration-200 text-sm font-medium
+           relative after:absolute after:bottom-0 after:left-0 after:w-0 after:h-0.5
+           after:bg-yellow-500 after:transition-all after:duration-300 hover:after:w-full;
+  }
+
+  .page-container {
+    @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
+  }
+
+  /* Responsive Table Wrapper */
+  .table-responsive {
+    @apply w-full overflow-x-auto rounded-2xl border border-gray-100 shadow-sm;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .mobile-only {
+    @apply block md:hidden;
+  }
+
+  .desktop-only {
+    @apply hidden md:block;
+  }
+
+  /* Sticky Mobile Bottom Bar */
+  .sticky-mobile-bar {
+    @apply fixed bottom-0 left-0 right-0 z-50 bg-white/90 backdrop-blur-xl border-t border-gray-100 p-4 md:hidden shadow-[0_-8px_30px_rgb(0,0,0,0.04)];
+  }
+}
+
+@layer utilities {
+  .text-shadow {
+    text-shadow: 0 2px 10px rgba(0,0,0,0.5);
+  }
+
+  .text-shadow-gold {
+    text-shadow: 0 0 30px rgba(212,175,55,0.5);
+  }
+
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .writing-vertical {
+    writing-mode: vertical-rl;
+    text-orientation: mixed;
+  }
+}
+
+/* Custom animations */
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-20px); }
+}
+
+@keyframes marquee {
+  0% { transform: translateX(0%); }
+  100% { transform: translateX(-50%); }
+}
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(30px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.9); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.animate-fade-in-up {
+  animation: fadeInUp 0.6s ease-out forwards;
+}
+
+.animate-scale-in {
+  animation: scaleIn 0.4s ease-out forwards;
+}
+
+/* Swiper customization */
+.swiper-pagination-bullet {
+  background: rgba(212, 175, 55, 0.5) !important;
+}
+
+.swiper-pagination-bullet-active {
+  background: #D4AF37 !important;
+}
+
+.swiper-button-next,
+.swiper-button-prev {
+  color: #D4AF37 !important;
+}
+
+/* Three.js canvas */
+canvas {
+  outline: none;
+}
+
+/* Loading screen */
+.loading-screen {
+  position: fixed;
+  inset: 0;
+  background: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+}
+
+/* Razorpay modal fix */
+.razorpay-container {
+  z-index: 10000 !important;
+}
+
+/* Status color helpers — light theme */
+.status-processing  { @apply text-yellow-700 bg-yellow-100; }
+.status-confirmed   { @apply text-blue-700 bg-blue-100; }
+.status-packed      { @apply text-purple-700 bg-purple-100; }
+.status-shipped     { @apply text-indigo-700 bg-indigo-100; }
+.status-delivered   { @apply text-green-700 bg-green-100; }
+.status-cancelled   { @apply text-red-700 bg-red-100; }
+
+/* ── Admin Panel Light Theme Overrides ─────────────────────── */
+/* These override dark-theme classes used in admin pages */
+
+.admin-light .glass,
+.admin-light .glass-dark {
+  @apply bg-white border border-gray-200;
+}
+
+.admin-light .glass-gold {
+  @apply bg-yellow-50 border border-yellow-200;
+}
+
+.admin-light .input-luxury {
+  @apply bg-white border border-gray-200 text-gray-800 placeholder-gray-400
+         focus:border-yellow-400 focus:bg-white;
+}
+
+/* Table rows */
+.admin-table th {
+  @apply text-left px-4 py-3 text-gray-500 text-xs font-semibold uppercase tracking-wider bg-gray-50 border-b border-gray-100;
+}
+
+.admin-table td {
+  @apply px-4 py-3 border-b border-gray-50;
+}
+
+.admin-table tr:hover td {
+  @apply bg-gray-50/70;
+}
+
+/* Admin modal */
+.admin-modal {
+  @apply bg-white rounded-2xl border border-gray-100 shadow-2xl;
+}
+
+.admin-modal label {
+  @apply text-gray-600 text-xs font-medium;
+}
