@@ -22,11 +22,7 @@ const AuthModal = () => {
   const handleRegister = async (e) => {
     e.preventDefault()
     const result = await dispatch(registerUser(registerForm))
-    if (!result.error) {
-      dispatch(closeAuthModal())
-      // Navigate to OTP verification
-      window.location.href = `/verify-otp?email=${encodeURIComponent(registerForm.email)}`
-    }
+    if (!result.error) dispatch(closeAuthModal())
   }
 
   return (

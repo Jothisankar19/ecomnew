@@ -34,49 +34,18 @@ exports.register = async (req, res) => {
     if (existingUser) {
       return res.status(400).json({ success: false, message: 'Email already registered' });
     }
+    // Create user — verified immediately, direct login
+    const user = await User.create({ name, email, password, phone, isVerified: true });
 
-    // Create user — NOT verified yet
-    const user = await User.create({ name, email, password, phone, isVerified: false });
-
-    // Generate OTP
-    const otp = user.generateOTP();
-    await user.save();
-
-    // Send OTP email (non-blocking)
+    // Send welcome email in background
     sendEmail({
       from: `"Kurti Elegance" <${process.env.EMAIL_USER}>`,
       to: email,
-      subject: 'Verify Your Email — Kurti Elegance',
-      html: `
-        <div style="font-family:Arial,sans-serif;max-width:500px;margin:0 auto;padding:30px;background:#fff;border:1px solid #eee;border-radius:12px">
-          <h2 style="color:#D4AF37;text-align:center;margin-bottom:8px">Kurti Elegance</h2>
-          <p style="text-align:center;color:#666;margin-bottom:24px">Verify your email address</p>
-          <p style="color:#333">Hi <strong>${name}</strong>,</p>
-          <p style="color:#555">Use the OTP below to verify your account. It expires in <strong>10 minutes</strong>.</p>
-          <div style="text-align:center;margin:30px 0">
-            <span style="font-size:42px;font-weight:bold;letter-spacing:14px;color:#D4AF37;background:#fef9ec;padding:16px 24px;border-radius:10px;border:2px dashed #D4AF37">${otp}</span>
-          </div>
-          <p style="color:#999;font-size:13px;text-align:center">If you didn't create an account, ignore this email.</p>
-        </div>
-      `
-    }).catch(err => console.log('OTP email failed:', err.message));
+      subject: 'Welcome to Kurti Elegance!',
+      html: getWelcomeTemplate({ name, email })
+    }).catch(() => {});
 
-    // Return token but user is NOT authenticated yet (isVerified=false)
-    res.status(201).json({
-      success: true,
-      message: 'OTP sent to your email. Please verify to continue.',
-      email,
-      requiresVerification: true,
-      // Send a temp token so frontend can call verify-otp
-      token: user.getJWTToken(),
-      user: {
-        _id: user._id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        isVerified: false,
-      }
-    });
+    sendToken(user, 201, res, `Welcome to Kurti Elegance, ${name}!`);
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
