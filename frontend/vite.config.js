@@ -10,9 +10,7 @@ export default defineConfig({
   },
   optimizeDeps: {
     esbuildOptions: {
-      loader: {
-        '.js': 'jsx',
-      },
+      loader: { '.js': 'jsx' },
     },
   },
   server: {
@@ -26,16 +24,17 @@ export default defineConfig({
     },
   },
   build: {
-    outDir: 'build',
+    outDir: 'dist',
     sourcemap: false,
+    chunkSizeWarningLimit: 1000,
     rollupOptions: {
       output: {
         manualChunks: {
-          vendor: ['react', 'react-dom', 'react-router-dom'],
-          redux: ['@reduxjs/toolkit', 'react-redux', 'redux-persist'],
-          three: ['three', '@react-three/fiber', '@react-three/drei'],
-          charts: ['recharts'],
-          motion: ['framer-motion'],
+          vendor:  ['react', 'react-dom', 'react-router-dom'],
+          redux:   ['@reduxjs/toolkit', 'react-redux', 'redux-persist'],
+          three:   ['three', '@react-three/fiber', '@react-three/drei'],
+          charts:  ['recharts'],
+          motion:  ['framer-motion'],
         },
       },
     },
