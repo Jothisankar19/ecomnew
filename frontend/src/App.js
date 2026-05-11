@@ -26,6 +26,7 @@ const RegisterPage = lazy(() => import('./pages/RegisterPage'));
 const ForgotPasswordPage = lazy(() => import('./pages/ForgotPasswordPage'));
 const ResetPasswordPage = lazy(() => import('./pages/ResetPasswordPage'));
 const VerifyOTPPage = lazy(() => import('./pages/VerifyOTPPage'));
+const VerifyOTPPage = lazy(() => import('./pages/VerifyOTPPage'));
 const CategoryPage = lazy(() => import('./pages/CategoryPage'));
 const SearchPage = lazy(() => import('./pages/SearchPage'));
 const NotFoundPage = lazy(() => import('./pages/NotFoundPage'));
@@ -89,6 +90,7 @@ function App() {
             <Route path="verify-email" element={<VerifyOTPPage />} />
             <Route path="forgot-password" element={<ForgotPasswordPage />} />
             <Route path="reset-password/:token" element={<ResetPasswordPage />} />
+            <Route path="verify-otp" element={<VerifyOTPPage />} />
 
             {/* Protected routes */}
             <Route path="checkout" element={<ProtectedRoute><CheckoutPage /></ProtectedRoute>} />

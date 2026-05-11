@@ -1,128 +1,186 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
-import { useDispatch, useSelector } from 'react-redux';
-import { motion } from 'framer-motion';
-import { Helmet } from 'react-helmet-async';
-import { FiShield, FiArrowLeft, FiRefreshCw } from 'react-icons/fi';
-import { verifyOTP } from '../store/slices/authSlice';
-import toast from 'react-hot-toast';
+import React, { useState, useEffect, useRef } from 'react'
+import { useNavigate, useLocation } from 'react-router-dom'
+import { useDispatch, useSelector } from 'react-redux'
+import { motion } from 'framer-motion'
+import { Helmet } from 'react-helmet-async'
+import { FiMail, FiArrowLeft, FiRefreshCw, FiCheck } from 'react-icons/fi'
+import { verifyOTP, resendOTP } from '../store/slices/authSlice'
 
 const VerifyOTPPage = () => {
-  const dispatch = useDispatch();
-  const navigate = useNavigate();
-  const location = useLocation();
-  const { loading } = useSelector((state) => state.auth);
-  
-  const [otp, setOtp] = useState(['', '', '', '', '', '']);
-  const [email, setEmail] = useState('');
+  const dispatch = useDispatch()
+  const navigate = useNavigate()
+  const location = useLocation()
+  const { loading, isAuthenticated, pendingEmail } = useSelector((state) => state.auth)
 
+  const email = location.state?.email || pendingEmail || ''
+  const [otp, setOtp] = useState(['', '', '', '', '', ''])
+  const [resendTimer, setResendTimer] = useState(60)
+  const [canResend, setCanResend] = useState(false)
+  const inputRefs = useRef([])
+
+  // Redirect if already verified
   useEffect(() => {
-    // Get email from navigation state or local storage
-    const stateEmail = location.state?.email;
-    if (stateEmail) {
-      setEmail(stateEmail);
-    } else {
-      toast.error('Session expired. Please register again.');
-      navigate('/register');
+    if (isAuthenticated) navigate('/', { replace: true })
+  }, [isAuthenticated, navigate])
+
+  // Redirect if no email
+  useEffect(() => {
+    if (!email) navigate('/register', { replace: true })
+  }, [email, navigate])
+
+  // Countdown timer for resend
+  useEffect(() => {
+    if (resendTimer <= 0) { setCanResend(true); return }
+    const t = setTimeout(() => setResendTimer(prev => prev - 1), 1000)
+    return () => clearTimeout(t)
+  }, [resendTimer])
+
+  const handleChange = (index, value) => {
+    if (!/^\d*$/.test(value)) return // digits only
+    const newOtp = [...otp]
+    newOtp[index] = value.slice(-1)
+    setOtp(newOtp)
+    // Auto-focus next
+    if (value && index < 5) inputRefs.current[index + 1]?.focus()
+  }
+
+  const handleKeyDown = (index, e) => {
+    if (e.key === 'Backspace' && !otp[index] && index > 0) {
+      inputRefs.current[index - 1]?.focus()
     }
-  }, [location, navigate]);
+  }
 
-  const handleChange = (element, index) => {
-    if (isNaN(element.value)) return false;
+  const handlePaste = (e) => {
+    e.preventDefault()
+    const pasted = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6)
+    const newOtp = [...otp]
+    pasted.split('').forEach((char, i) => { if (i < 6) newOtp[i] = char })
+    setOtp(newOtp)
+    inputRefs.current[Math.min(pasted.length, 5)]?.focus()
+  }
 
-    setOtp([...otp.map((d, idx) => (idx === index ? element.value : d))]);
+  const handleVerify = async (e) => {
+    e.preventDefault()
+    const otpString = otp.join('')
+    if (otpString.length !== 6) return
+    await dispatch(verifyOTP({ email, otp: otpString }))
+  }
 
-    // Focus next input
-    if (element.nextSibling && element.value !== '') {
-      element.nextSibling.focus();
-    }
-  };
+  const handleResend = async () => {
+    if (!canResend) return
+    setCanResend(false)
+    setResendTimer(60)
+    setOtp(['', '', '', '', '', ''])
+    inputRefs.current[0]?.focus()
+    await dispatch(resendOTP(email))
+  }
 
-  const handleBackspace = (e, index) => {
-    if (e.key === 'Backspace' && e.target.previousSibling && otp[index] === '') {
-      e.target.previousSibling.focus();
-    }
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    const otpString = otp.join('');
-    if (otpString.length < 6) {
-      return toast.error('Please enter the full 6-digit code');
-    }
-
-    const result = await dispatch(verifyOTP({ email, otp: otpString }));
-    if (!result.error) {
-      toast.success('Email verified successfully! You can now log in.');
-      navigate('/login');
-    }
-  };
+  const otpComplete = otp.every(d => d !== '')
 
   return (
     <>
-      <Helmet><title>Verify Email - Kurti Elegance</title></Helmet>
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center pt-20 px-4">
-        <motion.div 
-          initial={{ opacity: 0, y: 24 }} 
-          animate={{ opacity: 1, y: 0 }} 
+      <Helmet><title>Verify Email — Kurti Elegance</title></Helmet>
+
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
+        <motion.div
+          initial={{ opacity: 0, y: 24 }}
+          animate={{ opacity: 1, y: 0 }}
           className="w-full max-w-md"
         >
-          <button 
-            onClick={() => navigate('/register')}
-            className="flex items-center gap-2 text-gray-500 hover:text-gray-800 transition-colors mb-6"
-          >
-            <FiArrowLeft /> Back to Registration
+          {/* Back */}
+          <button onClick={() => navigate('/register')}
+            className="flex items-center gap-2 text-gray-400 hover:text-gray-700 text-sm mb-6 transition-colors">
+            <FiArrowLeft size={16} /> Back to Register
           </button>
 
-          <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-8 text-center">
-            <div className="w-16 h-16 bg-yellow-50 rounded-2xl flex items-center justify-center mx-auto mb-6 text-yellow-600">
-              <FiShield size={32} />
+          <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-8">
+            {/* Icon */}
+            <div className="text-center mb-6">
+              <motion.div
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ delay: 0.2, type: 'spring', stiffness: 200 }}
+                className="w-16 h-16 rounded-2xl bg-yellow-50 border-2 border-yellow-200 flex items-center justify-center mx-auto mb-4"
+              >
+                <FiMail className="text-yellow-500" size={28} />
+              </motion.div>
+              <h1 className="font-display text-2xl font-bold text-gray-800 mb-2">Check your email</h1>
+              <p className="text-gray-400 text-sm">
+                We sent a 6-digit OTP to
+              </p>
+              <p className="text-yellow-600 font-semibold text-sm mt-1">{email}</p>
             </div>
 
-            <h1 className="text-2xl font-bold text-gray-800 mb-2">Verify Your Email</h1>
-            <p className="text-gray-500 text-sm mb-8">
-              We've sent a 6-digit code to <span className="text-gray-800 font-semibold">{email}</span>. 
-              Please enter it below to verify your account.
-            </p>
-
-            <form onSubmit={handleSubmit} className="space-y-8">
-              <div className="flex justify-between gap-2">
-                {otp.map((data, index) => (
-                  <input
-                    key={index}
-                    type="text"
-                    maxLength="1"
-                    value={data}
-                    onChange={(e) => handleChange(e.target, index)}
-                    onKeyDown={(e) => handleBackspace(e, index)}
-                    onFocus={(e) => e.target.select()}
-                    className="w-12 h-14 bg-gray-50 border border-gray-200 rounded-xl text-center text-xl font-bold text-gray-800 focus:outline-none focus:border-yellow-400 focus:ring-1 focus:ring-yellow-400 transition-all"
-                  />
-                ))}
+            <form onSubmit={handleVerify} className="space-y-6">
+              {/* OTP Input boxes */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-3 text-center">
+                  Enter 6-digit OTP
+                </label>
+                <div className="flex gap-2 justify-center" onPaste={handlePaste}>
+                  {otp.map((digit, i) => (
+                    <input
+                      key={i}
+                      ref={el => inputRefs.current[i] = el}
+                      type="text"
+                      inputMode="numeric"
+                      maxLength={1}
+                      value={digit}
+                      onChange={e => handleChange(i, e.target.value)}
+                      onKeyDown={e => handleKeyDown(i, e)}
+                      className={`w-12 h-14 text-center text-xl font-bold rounded-xl border-2 transition-all focus:outline-none ${
+                        digit
+                          ? 'border-yellow-400 bg-yellow-50 text-yellow-700'
+                          : 'border-gray-200 bg-gray-50 text-gray-800 focus:border-yellow-400 focus:bg-white'
+                      }`}
+                    />
+                  ))}
+                </div>
               </div>
 
-              <button 
-                type="submit" 
-                disabled={loading} 
-                className="btn-primary w-full py-4 text-base shadow-lg shadow-yellow-200/50"
+              {/* Verify button */}
+              <motion.button
+                type="submit"
+                disabled={loading || !otpComplete}
+                whileHover={{ scale: otpComplete && !loading ? 1.02 : 1 }}
+                whileTap={{ scale: 0.98 }}
+                className={`w-full font-bold py-4 rounded-2xl transition-all flex items-center justify-center gap-2 text-sm ${
+                  otpComplete
+                    ? 'bg-yellow-500 hover:bg-yellow-400 text-white shadow-lg shadow-yellow-200'
+                    : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                }`}
               >
-                {loading ? 'Verifying...' : 'Verify & Continue'}
-              </button>
+                {loading ? (
+                  <><div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />Verifying...</>
+                ) : (
+                  <><FiCheck size={16} />Verify & Open Account</>
+                )}
+              </motion.button>
             </form>
 
-            <div className="mt-8 pt-6 border-t border-gray-50">
-              <p className="text-gray-400 text-sm">
-                Didn't receive the code? 
-                <button className="text-yellow-600 font-semibold ml-2 hover:text-yellow-700 flex items-center gap-1 mx-auto mt-2">
+            {/* Resend */}
+            <div className="text-center mt-5">
+              {canResend ? (
+                <button onClick={handleResend}
+                  className="flex items-center gap-2 text-yellow-600 hover:text-yellow-700 font-semibold text-sm mx-auto transition-colors">
                   <FiRefreshCw size={14} /> Resend OTP
                 </button>
-              </p>
+              ) : (
+                <p className="text-gray-400 text-sm">
+                  Resend OTP in <span className="text-yellow-600 font-semibold">{resendTimer}s</span>
+                </p>
+              )}
             </div>
+
+            {/* Help text */}
+            <p className="text-center text-gray-400 text-xs mt-4">
+              Didn't receive it? Check your spam folder.
+            </p>
           </div>
         </motion.div>
       </div>
     </>
-  );
-};
+  )
+}
 
-export default VerifyOTPPage;
+export default VerifyOTPPage

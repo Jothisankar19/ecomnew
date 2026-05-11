@@ -20,6 +20,24 @@ export const registerUser = createAsyncThunk('auth/register', async (userData, {
   }
 })
 
+export const verifyOTP = createAsyncThunk('auth/verifyOTP', async ({ email, otp }, { rejectWithValue }) => {
+  try {
+    const { data } = await api.post('/auth/verify-otp', { email, otp })
+    return data
+  } catch (error) {
+    return rejectWithValue(error.response?.data?.message || 'Invalid OTP')
+  }
+})
+
+export const resendOTP = createAsyncThunk('auth/resendOTP', async (email, { rejectWithValue }) => {
+  try {
+    const { data } = await api.post('/auth/resend-otp', { email })
+    return data
+  } catch (error) {
+    return rejectWithValue(error.response?.data?.message || 'Failed to resend OTP')
+  }
+})
+
 // User-initiated logout — shows toast
 export const logoutUser = createAsyncThunk('auth/logout', async () => {
   try { await api.post('/auth/logout') } catch {}
@@ -70,6 +88,8 @@ const authSlice = createSlice({
     isAuthenticated: false,
     loading: false,
     error: null,
+    pendingEmail: null,
+    requiresVerification: false,
   },
   reducers: {
     clearError: (state) => { state.error = null },
@@ -106,15 +126,52 @@ const authSlice = createSlice({
       })
       .addCase(registerUser.fulfilled, (state, action) => {
         state.loading = false
-        state.user = action.payload.user
-        state.token = action.payload.token
-        state.isAuthenticated = true
         state.error = null
-        toast.success(`Welcome, ${action.payload.user?.name?.split(' ')[0]}! Account created 🎉`)
+        // Store email for OTP page — but NOT authenticated yet
+        state.pendingEmail = action.payload.email
+        state.requiresVerification = action.payload.requiresVerification
+        // Store temp token so OTP call works
+        if (action.payload.requiresVerification) {
+          state.token = action.payload.token
+          state.user = action.payload.user
+          state.isAuthenticated = false // not fully authenticated until OTP verified
+          toast.success('OTP sent to your email! Please verify.')
+        } else {
+          state.user = action.payload.user
+          state.token = action.payload.token
+          state.isAuthenticated = true
+          toast.success(`Welcome, ${action.payload.user?.name?.split(' ')[0]}! 🎉`)
+        }
       })
       .addCase(registerUser.rejected, (state, action) => {
         state.loading = false
         state.error = action.payload
+        if (action.payload) toast.error(action.payload)
+      })
+
+      // ── Verify OTP ─────────────────────────────────────────
+      .addCase(verifyOTP.pending, (state) => { state.loading = true; state.error = null })
+      .addCase(verifyOTP.fulfilled, (state, action) => {
+        state.loading = false
+        state.user = action.payload.user
+        state.token = action.payload.token
+        state.isAuthenticated = true
+        state.requiresVerification = false
+        state.pendingEmail = null
+        state.error = null
+        toast.success(`Welcome, ${action.payload.user?.name?.split(' ')[0]}! Account verified 🎉`)
+      })
+      .addCase(verifyOTP.rejected, (state, action) => {
+        state.loading = false
+        state.error = action.payload
+        if (action.payload) toast.error(action.payload)
+      })
+
+      // ── Resend OTP ─────────────────────────────────────────
+      .addCase(resendOTP.fulfilled, () => {
+        toast.success('New OTP sent to your email!')
+      })
+      .addCase(resendOTP.rejected, (_, action) => {
         if (action.payload) toast.error(action.payload)
       })
 
@@ -151,4 +208,5 @@ const authSlice = createSlice({
 })
 
 export const { clearError, setToken, updateUser, silentLogout } = authSlice.actions
+export { verifyOTP, resendOTP }
 export default authSlice.reducer

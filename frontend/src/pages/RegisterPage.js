@@ -16,7 +16,7 @@ const RegisterPage = () => {
   const handleSubmit = async (e) => {
     e.preventDefault()
     const result = await dispatch(registerUser(form))
-    if (!result.error) navigate('/verify-email', { state: { email: form.email } })
+    if (!result.error) navigate('/verify-otp', { state: { email: form.email } })
   }
 
   return (
