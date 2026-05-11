@@ -78,7 +78,21 @@ app.use('/api/upload', require('./routes/uploadRoutes'));
 
 // Health check
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'OK', message: 'Fashion E-Commerce API is running', timestamp: new Date() });
+  res.json({ status: 'OK', message: 'Kurti Elegance API is running', timestamp: new Date() });
+});
+
+// Root route
+app.get('/', (req, res) => {
+  res.json({
+    status: 'OK',
+    name: 'Kurti Elegance API',
+    version: '1.0.0',
+    endpoints: {
+      health: '/api/health',
+      products: '/api/products',
+      auth: '/api/auth/login',
+    }
+  });
 });
 
 // Error handling middleware
