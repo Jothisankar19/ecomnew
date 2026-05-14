@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
 import { Helmet } from 'react-helmet-async'
-import { FiSearch, FiUser, FiShield, FiToggleLeft, FiToggleRight, FiPhone, FiTrash2 } from 'react-icons/fi'
+import { FiSearch, FiUser, FiShield, FiToggleLeft, FiToggleRight, FiPhone, FiTrash2, FiRefreshCw } from 'react-icons/fi'
 import api from '../../utils/api'
 import { formatDate } from '../../utils/helpers'
 import AdminLayout from '../../components/layout/AdminLayout'
@@ -79,7 +79,9 @@ const AdminUsers = () => {
           <option value="customer">Customers</option>
           <option value="admin">Admins</option>
         </select>
-        <button onClick={fetchUsers} className="bg-yellow-500 hover:bg-yellow-400 text-white font-semibold text-sm px-4 py-2.5 rounded-xl transition-colors">Search</button>
+        <button onClick={fetchUsers} className="flex items-center gap-2 border border-yellow-500 text-yellow-600 hover:bg-yellow-50 font-medium text-sm px-4 py-2.5 rounded-xl transition-colors">
+          <FiRefreshCw size={14} /> Refresh
+        </button>
       </div>
 
       {/* Table */}

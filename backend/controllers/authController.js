@@ -25,27 +25,56 @@ const sendToken = (user, statusCode, res, message) => {
   });
 };
 
-// @desc    Register user
+// @desc    Register user — creates unverified account and sends OTP
 // @route   POST /api/auth/register
 exports.register = async (req, res) => {
   try {
     const { name, email, password, phone } = req.body;
+
+    // If user exists and is already verified, reject
     const existingUser = await User.findOne({ email });
-    if (existingUser) {
+    if (existingUser && existingUser.isVerified) {
       return res.status(400).json({ success: false, message: 'Email already registered' });
     }
-    // Create user — verified immediately, direct login
-    const user = await User.create({ name, email, password, phone, isVerified: true });
 
-    // Send welcome email in background
-    sendEmail({
+    // If user exists but unverified (e.g. previous incomplete signup), delete and recreate
+    if (existingUser && !existingUser.isVerified) {
+      await existingUser.deleteOne();
+    }
+
+    // Build user data — phone is optional
+    const userData = { name, email, password, isVerified: false };
+    if (phone && phone.trim()) userData.phone = phone.trim();
+
+    const user = await User.create(userData);
+
+    // Generate OTP and save
+    const otp = user.generateOTP();
+    await user.save();
+
+    // Send OTP email
+    await sendEmail({
       from: `"Kurti Elegance" <${process.env.EMAIL_USER}>`,
       to: email,
-      subject: 'Welcome to Kurti Elegance!',
-      html: getWelcomeTemplate({ name, email })
-    }).catch(() => {});
+      subject: 'Verify your email — Kurti Elegance',
+      html: `<div style="font-family:Arial,sans-serif;max-width:500px;margin:0 auto;padding:30px;background:#fff;border-radius:12px;border:1px solid #eee">
+        <h2 style="color:#D4AF37;text-align:center">Verify Your Email</h2>
+        <p>Hi <strong>${name}</strong>, welcome to Kurti Elegance!</p>
+        <p>Use the OTP below to verify your email address. It expires in <strong>10 minutes</strong>.</p>
+        <div style="text-align:center;margin:24px 0">
+          <span style="font-size:42px;font-weight:bold;letter-spacing:14px;color:#D4AF37;background:#fef9ec;padding:16px 24px;border-radius:10px;border:2px dashed #D4AF37">${otp}</span>
+        </div>
+        <p style="color:#999;font-size:13px;text-align:center">If you did not sign up, please ignore this email.</p>
+      </div>`
+    });
 
-    sendToken(user, 201, res, `Welcome to Kurti Elegance, ${name}!`);
+    // Return pending state — no token yet, frontend will redirect to verify-otp
+    res.status(201).json({
+      success: true,
+      requiresVerification: true,
+      email,
+      message: `OTP sent to ${email}. Please verify to complete registration.`
+    });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }

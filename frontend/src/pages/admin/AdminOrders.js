@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Helmet } from 'react-helmet-async'
-import { FiSearch, FiEdit2, FiX, FiTruck, FiPackage, FiTrash2 } from 'react-icons/fi'
+import { FiSearch, FiEdit2, FiX, FiTruck, FiPackage, FiTrash2, FiRefreshCw } from 'react-icons/fi'
 import api from '../../utils/api'
 import { formatPrice, formatDate, getStatusColor, getStatusLabel } from '../../utils/helpers'
 import AdminLayout from '../../components/layout/AdminLayout'
@@ -161,6 +161,9 @@ const AdminOrders = () => {
           className="bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-700 focus:outline-none focus:border-yellow-400">
           {statusOptions.map(s => <option key={s} value={s}>{s === 'all' ? 'All Status' : getStatusLabel(s)}</option>)}
         </select>
+        <button onClick={fetchOrders} className="flex items-center gap-2 border border-yellow-500 text-yellow-600 hover:bg-yellow-50 font-medium text-sm px-4 py-2.5 rounded-xl transition-colors">
+          <FiRefreshCw size={14} /> Refresh
+        </button>
       </div>
 
       {/* Status Pills */}

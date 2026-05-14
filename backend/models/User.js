@@ -24,7 +24,14 @@ const userSchema = new mongoose.Schema({
   },
   phone: {
     type: String,
-    match: [/^[6-9]\d{9}$/, 'Please enter a valid Indian phone number']
+    validate: {
+      validator: function(v) {
+        // Only validate if a value is actually provided
+        if (!v || v.trim() === '') return true;
+        return /^[6-9]\d{9}$/.test(v);
+      },
+      message: 'Please enter a valid 10-digit Indian phone number'
+    }
   },
   avatar: {
     public_id: String,

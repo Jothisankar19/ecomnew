@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useDispatch, useSelector } from 'react-redux'
 import { FiX, FiMail, FiLock, FiUser, FiPhone, FiEye, FiEyeOff } from 'react-icons/fi'
@@ -7,6 +8,7 @@ import { loginUser, registerUser } from '../../store/slices/authSlice'
 
 const AuthModal = () => {
   const dispatch = useDispatch()
+  const navigate = useNavigate()
   const { authModalMode } = useSelector((state) => state.ui)
   const { loading } = useSelector((state) => state.auth)
   const [showPassword, setShowPassword] = useState(false)
@@ -21,8 +23,16 @@ const AuthModal = () => {
 
   const handleRegister = async (e) => {
     e.preventDefault()
-    const result = await dispatch(registerUser(registerForm))
-    if (!result.error) dispatch(closeAuthModal())
+    // Strip empty phone to avoid backend validation errors
+    const payload = { ...registerForm }
+    if (!payload.phone || !payload.phone.trim()) delete payload.phone
+    const result = await dispatch(registerUser(payload))
+    if (!result.error) {
+      dispatch(closeAuthModal())
+      if (result.payload?.requiresVerification) {
+        navigate('/verify-otp')
+      }
+    }
   }
 
   return (

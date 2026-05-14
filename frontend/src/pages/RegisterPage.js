@@ -15,8 +15,18 @@ const RegisterPage = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    const result = await dispatch(registerUser(form))
-    if (!result.error) navigate('/')  }
+    // Strip empty phone to avoid backend validation errors
+    const payload = { ...form }
+    if (!payload.phone || !payload.phone.trim()) delete payload.phone
+    const result = await dispatch(registerUser(payload))
+    if (!result.error) {
+      if (result.payload?.requiresVerification) {
+        navigate('/verify-otp')
+      } else {
+        navigate('/')
+      }
+    }
+  }
 
   return (
     <>

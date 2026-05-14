@@ -63,15 +63,6 @@ export const googleLogin = createAsyncThunk('auth/googleLogin', async (googleDat
   }
 })
 
-export const verifyOTP = createAsyncThunk('auth/verifyOTP', async (otpData, { rejectWithValue }) => {
-  try {
-    const { data } = await api.post('/auth/verify-otp', otpData)
-    return data
-  } catch (error) {
-    return rejectWithValue(error.response?.data?.message || 'OTP verification failed')
-  }
-})
-
 const clearAuthState = (state) => {
   state.user = null
   state.token = null
@@ -97,6 +88,11 @@ const authSlice = createSlice({
     updateUser: (state, action) => { state.user = { ...state.user, ...action.payload } },
     // Silent logout — no toast (used by 401 interceptor)
     silentLogout: (state) => { clearAuthState(state) },
+    // Clear OTP verification state (e.g. user goes back)
+    clearPendingVerification: (state) => {
+      state.pendingEmail = null
+      state.requiresVerification = false
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -126,15 +122,52 @@ const authSlice = createSlice({
       })
       .addCase(registerUser.fulfilled, (state, action) => {
         state.loading = false
-        state.user = action.payload.user
-        state.token = action.payload.token
-        state.isAuthenticated = true
         state.error = null
-        toast.success(`Welcome, ${action.payload.user?.name?.split(' ')[0]}! Account created 🎉`)
+        // Backend now returns requiresVerification=true — store email, redirect to OTP page
+        if (action.payload.requiresVerification) {
+          state.pendingEmail = action.payload.email
+          state.requiresVerification = true
+          toast.success('OTP sent! Please check your email 📧')
+        } else {
+          // Fallback: direct login (should not happen with new flow)
+          state.user = action.payload.user
+          state.token = action.payload.token
+          state.isAuthenticated = true
+          toast.success(`Welcome! Account created 🎉`)
+        }
       })
       .addCase(registerUser.rejected, (state, action) => {
         state.loading = false
         state.error = action.payload
+        if (action.payload) toast.error(action.payload)
+      })
+
+      // ── Verify OTP ─────────────────────────────────────────
+      .addCase(verifyOTP.pending, (state) => {
+        state.loading = true
+        state.error = null
+      })
+      .addCase(verifyOTP.fulfilled, (state, action) => {
+        state.loading = false
+        state.user = action.payload.user
+        state.token = action.payload.token
+        state.isAuthenticated = true
+        state.pendingEmail = null
+        state.requiresVerification = false
+        state.error = null
+        toast.success(`Welcome to Kurti Elegance, ${action.payload.user?.name?.split(' ')[0]}! 🎉`)
+      })
+      .addCase(verifyOTP.rejected, (state, action) => {
+        state.loading = false
+        state.error = action.payload
+        if (action.payload) toast.error(action.payload)
+      })
+
+      // ── Resend OTP ─────────────────────────────────────────
+      .addCase(resendOTP.fulfilled, (state) => {
+        toast.success('New OTP sent to your email 📧')
+      })
+      .addCase(resendOTP.rejected, (state, action) => {
         if (action.payload) toast.error(action.payload)
       })
 
@@ -170,6 +203,5 @@ const authSlice = createSlice({
   },
 })
 
-export const { clearError, setToken, updateUser, silentLogout } = authSlice.actions
-export { verifyOTP, resendOTP }
+export const { clearError, setToken, updateUser, silentLogout, clearPendingVerification } = authSlice.actions
 export default authSlice.reducer
