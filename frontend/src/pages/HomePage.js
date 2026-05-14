@@ -548,40 +548,64 @@ const CTASection = () => (
   <section className="py-14 bg-white">
     <div className="page-container">
       <motion.div
-        initial={{ opacity: 0, scale: 0.97 }}
-        whileInView={{ opacity: 1, scale: 1 }}
+        initial={{ opacity: 0, y: 20 }}
+        whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: true }}
-        className="relative overflow-hidden rounded-3xl shadow-xl"
+        className="relative overflow-hidden rounded-[2.5rem] shadow-2xl group"
       >
+        <div className="absolute inset-0 bg-gray-900" />
         <img
           src="https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=1400&q=85"
           alt="Kurti Collection"
-          className="w-full h-72 md:h-80 object-cover object-top"
+          className="w-full h-[450px] md:h-[400px] object-cover object-top opacity-60 md:opacity-100 group-hover:scale-105 transition-transform duration-700"
         />
-        <div className="absolute inset-0 bg-gradient-to-r from-black/75 via-black/50 to-transparent" />
-        <div className="absolute inset-0 flex flex-col justify-center px-8 md:px-16">
-          <p className="text-yellow-400 text-xs font-bold tracking-widest uppercase mb-3">Summer 2026</p>
-          <h2 className="font-display text-4xl md:text-5xl font-bold text-white mb-3 leading-tight">
-            Summer Kurti<br />
-            <span style={{ color: '#D4AF37' }}>Collection 2026</span>
-          </h2>
-          <p className="text-white/70 text-sm mb-6 max-w-sm">
-            Discover breathtaking kurtis crafted for the modern Indian woman. Flat 50% OFF on all styles.
-          </p>
-          <div className="flex flex-wrap gap-3">
-            <Link
-              to="/products"
-              className="inline-flex items-center gap-2 bg-yellow-500 hover:bg-yellow-400 text-white font-bold text-sm tracking-widest uppercase px-7 py-3 rounded-sm transition-colors shadow-lg"
-            >
-              Shop All Kurtis <FiArrowRight size={16} />
-            </Link>
-            <Link
-              to="/category/anarkali-kurtis"
-              className="inline-flex items-center gap-2 border-2 border-white/60 hover:border-white text-white font-bold text-sm tracking-widest uppercase px-7 py-3 rounded-sm transition-colors"
-            >
-              Anarkali Kurtis
-            </Link>
-          </div>
+        
+        {/* Enhanced Gradient Overlay */}
+        <div className="absolute inset-0 bg-gradient-to-t md:bg-gradient-to-r from-black/90 via-black/60 to-transparent" />
+        
+        <div className="absolute inset-0 flex flex-col justify-end md:justify-center p-8 md:px-20 pb-12 md:pb-0">
+          <motion.div
+            initial={{ opacity: 0, x: -20 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.2 }}
+            className="max-w-xl"
+          >
+            <span className="inline-block text-yellow-400 text-xs font-black tracking-[0.2em] uppercase mb-4 px-3 py-1 bg-white/10 backdrop-blur-md rounded-full border border-white/20">
+              Summer 2026
+            </span>
+            <h2 className="font-display text-4xl md:text-6xl font-bold text-white mb-4 leading-[1.1]">
+              Summer Kurti<br />
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-yellow-600">
+                Collection 2026
+              </span>
+            </h2>
+            <p className="text-white/80 text-base md:text-lg mb-8 max-w-md leading-relaxed">
+              Discover breathtaking kurtis crafted for the modern Indian woman. 
+              <span className="block text-yellow-400 font-bold mt-1">Flat 50% OFF on all styles.</span>
+            </p>
+            <div className="flex flex-col sm:flex-row gap-4">
+              <Link
+                to="/products"
+                className="group relative inline-flex items-center justify-center gap-3 bg-yellow-500 hover:bg-yellow-400 text-white font-bold text-sm tracking-widest uppercase px-8 py-4 rounded-xl transition-all shadow-xl shadow-yellow-500/20 active:scale-95"
+              >
+                Shop All Kurtis 
+                <FiArrowRight className="group-hover:translate-x-1 transition-transform" size={18} />
+              </Link>
+              <Link
+                to="/category/anarkali-kurtis"
+                className="inline-flex items-center justify-center gap-2 border-2 border-white/30 hover:border-white hover:bg-white/10 text-white font-bold text-sm tracking-widest uppercase px-8 py-4 rounded-xl transition-all backdrop-blur-sm"
+              >
+                Anarkali Kurtis
+              </Link>
+            </div>
+          </motion.div>
+        </div>
+
+        {/* Decorative elements */}
+        <div className="absolute top-10 right-10 hidden lg:block">
+           <div className="w-24 h-24 border-2 border-yellow-500/30 rounded-full animate-spin-slow flex items-center justify-center">
+              <div className="w-16 h-16 border-2 border-white/10 rounded-full" />
+           </div>
         </div>
       </motion.div>
     </div>
