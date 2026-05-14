@@ -266,9 +266,10 @@ const Navbar = () => {
               animate={{ x: 0 }}
               exit={{ x: '100%' }}
               transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-              className="absolute right-0 top-0 bottom-0 w-[85%] max-w-sm bg-white shadow-2xl flex flex-col"
+              className="absolute right-0 top-0 bottom-0 w-[85%] max-w-sm bg-white shadow-2xl flex flex-col z-[110]"
+              style={{ backgroundColor: '#ffffff' }}
             >
-              <div className="p-6 flex items-center justify-between border-b border-gray-50">
+              <div className="p-6 flex items-center justify-between border-b border-gray-100 bg-white">
                 <Link to="/" onClick={() => dispatch(closeMobileMenu())} className="flex items-center gap-2">
                   <div className="w-8 h-8 rounded-full bg-yellow-500 flex items-center justify-center">
                     <span className="text-white font-bold text-xs">KE</span>
@@ -282,8 +283,8 @@ const Navbar = () => {
                   <FiX size={20} />
                 </button>
               </div>
-
-              <div className="flex-1 overflow-y-auto py-6 px-6 no-scrollbar">
+ 
+              <div className="flex-1 overflow-y-auto py-6 px-6 no-scrollbar bg-white">
                 <div className="space-y-1 mb-8">
                   <p className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em] mb-4">Quick Links</p>
                   {[
@@ -308,43 +309,83 @@ const Navbar = () => {
 
                 <div className="space-y-1">
                   <p className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em] mb-4">Collections</p>
-                  <div className="grid grid-cols-1 gap-2">
-                    {categories.filter(c => !c.isHeader).slice(0, 8).map((cat) => (
-                      <Link
-                        key={cat.slug}
-                        to={`/category/${cat.slug}`}
-                        onClick={() => dispatch(closeMobileMenu())}
-                        className="flex items-center gap-3 p-3 rounded-2xl hover:bg-yellow-50 text-gray-600 hover:text-yellow-700 transition-all border border-transparent hover:border-yellow-100"
-                      >
-                        <div className="w-8 h-8 rounded-xl bg-gray-50 flex items-center justify-center text-sm">
-                          {cat.name.charAt(0)}
-                        </div>
-                        <span className="text-sm font-medium">{cat.name}</span>
-                      </Link>
+                  <div className="grid grid-cols-1 gap-1">
+                    {categories.map((cat, index) => (
+                      cat.isHeader ? (
+                        <p key={`header-${index}`} className="px-3 pt-4 pb-1 text-[10px] font-bold text-gray-400 uppercase tracking-widest border-t border-gray-50 mt-2 first:mt-0 first:border-0 first:pt-0">
+                          {cat.name}
+                        </p>
+                      ) : (
+                        <Link
+                          key={cat.slug}
+                          to={`/category/${cat.slug}`}
+                          onClick={() => dispatch(closeMobileMenu())}
+                          className="flex items-center gap-3 p-3 rounded-2xl hover:bg-yellow-50 text-gray-600 hover:text-yellow-700 transition-all border border-transparent hover:border-yellow-100"
+                        >
+                          <div className="w-8 h-8 rounded-xl bg-gray-50 flex items-center justify-center text-xs font-bold text-gray-400">
+                            {cat.name.charAt(0)}
+                          </div>
+                          <span className="text-sm font-medium">{cat.name}</span>
+                        </Link>
+                      )
                     ))}
-                    <Link 
-                      to="/products" 
-                      onClick={() => dispatch(closeMobileMenu())}
-                      className="text-center py-3 text-yellow-600 text-sm font-bold mt-2"
-                    >
-                      View All Collections
-                    </Link>
                   </div>
                 </div>
+
+                {/* Account Section for Mobile */}
+                {isAuthenticated && (
+                  <div className="space-y-1 mt-8 pb-4">
+                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em] mb-4">Account Settings</p>
+                    <div className="grid grid-cols-1 gap-1">
+                      <Link
+                        to="/profile"
+                        onClick={() => dispatch(closeMobileMenu())}
+                        className="flex items-center gap-3 p-3 rounded-2xl hover:bg-yellow-50 text-gray-600 hover:text-yellow-700 transition-all"
+                      >
+                        <div className="w-8 h-8 rounded-xl bg-gray-50 flex items-center justify-center">
+                          <FiUser className="text-gray-400" size={16} />
+                        </div>
+                        <span className="text-sm font-medium">My Profile</span>
+                      </Link>
+                      <Link
+                        to="/orders"
+                        onClick={() => dispatch(closeMobileMenu())}
+                        className="flex items-center gap-3 p-3 rounded-2xl hover:bg-yellow-50 text-gray-600 hover:text-yellow-700 transition-all"
+                      >
+                        <div className="w-8 h-8 rounded-xl bg-gray-50 flex items-center justify-center">
+                          <FiPackage className="text-gray-400" size={16} />
+                        </div>
+                        <span className="text-sm font-medium">My Orders</span>
+                      </Link>
+                      {user?.role === 'admin' && (
+                        <Link
+                          to="/admin"
+                          onClick={() => dispatch(closeMobileMenu())}
+                          className="flex items-center gap-3 p-3 rounded-2xl bg-yellow-50 text-yellow-700 font-medium transition-all border border-yellow-100"
+                        >
+                          <div className="w-8 h-8 rounded-xl bg-yellow-100 flex items-center justify-center">
+                            <FiSettings className="text-yellow-600" size={16} />
+                          </div>
+                          <span className="text-sm">Admin Panel</span>
+                        </Link>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
 
-              <div className="p-6 bg-gray-50">
+              <div className="p-6 bg-white border-t border-gray-100">
                 {!isAuthenticated ? (
                   <div className="grid grid-cols-2 gap-3">
                     <button 
                       onClick={() => { dispatch(closeMobileMenu()); dispatch(openAuthModal('login')); }}
-                      className="bg-white text-gray-800 font-bold py-3.5 rounded-2xl shadow-sm border border-gray-200 text-sm"
+                      className="bg-white text-gray-800 font-bold py-3.5 rounded-2xl shadow-sm border border-gray-200 text-sm hover:bg-gray-50 transition-colors"
                     >
                       Login
                     </button>
                     <button 
                       onClick={() => { dispatch(closeMobileMenu()); dispatch(openAuthModal('register')); }}
-                      className="bg-yellow-500 text-white font-bold py-3.5 rounded-2xl shadow-lg shadow-yellow-200 text-sm"
+                      className="bg-yellow-500 text-white font-bold py-3.5 rounded-2xl shadow-lg shadow-yellow-200 text-sm hover:bg-yellow-600 transition-colors"
                     >
                       Join Now
                     </button>
@@ -352,7 +393,7 @@ const Navbar = () => {
                 ) : (
                   <button 
                     onClick={handleLogout}
-                    className="w-full flex items-center justify-center gap-2 text-red-500 font-bold py-3.5 bg-red-50 rounded-2xl border border-red-100 text-sm"
+                    className="w-full flex items-center justify-center gap-2 text-red-500 font-bold py-3.5 bg-red-50 rounded-2xl border border-red-100 text-sm hover:bg-red-100 transition-colors"
                   >
                     <FiLogOut /> Logout Account
                   </button>
