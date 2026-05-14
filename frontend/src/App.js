@@ -38,6 +38,7 @@ const AdminUsers      = lazy(() => import('./pages/admin/AdminUsers'));
 const AdminCategories = lazy(() => import('./pages/admin/AdminCategories'));
 const AdminCoupons    = lazy(() => import('./pages/admin/AdminCoupons'));
 const AdminInventory  = lazy(() => import('./pages/admin/AdminInventory'));
+const AdminSettings   = lazy(() => import('./pages/admin/AdminSettings'));
 
 function App() {
   const dispatch = useDispatch()
@@ -100,6 +101,7 @@ function App() {
             <Route path="categories" element={<AdminCategories />} />
             <Route path="coupons" element={<AdminCoupons />} />
             <Route path="inventory" element={<AdminInventory />} />
+            <Route path="settings" element={<AdminSettings />} />
           </Route>
 
           <Route path="*" element={<NotFoundPage />} />

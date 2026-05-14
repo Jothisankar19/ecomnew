@@ -16,7 +16,8 @@ const navItems = [
   { path: '/admin/users', label: 'Users', icon: FiUsers, color: 'text-green-600', bg: 'bg-green-50' },
   { path: '/admin/categories', label: 'Categories', icon: FiTag, color: 'text-pink-600', bg: 'bg-pink-50' },
   { path: '/admin/coupons', label: 'Coupons', icon: FiPercent, color: 'text-yellow-600', bg: 'bg-yellow-50' },
-  { path: '/admin/inventory', label: 'Inventory', icon: FiBarChart2, color: 'text-red-600', bg: 'bg-red-50' }
+  { path: '/admin/inventory', label: 'Inventory', icon: FiBarChart2, color: 'text-red-600', bg: 'bg-red-50' },
+  { path: '/admin/settings', label: 'Settings', icon: FiSettings, color: 'text-gray-600', bg: 'bg-gray-50' }
 ]
 
 const AdminLayout = ({ children }) => {
@@ -162,9 +163,9 @@ const AdminLayout = ({ children }) => {
             <button className="p-2 text-gray-400 hover:text-gray-700 rounded-xl hover:bg-gray-100 transition-all">
               <FiBell size={18} />
             </button>
-            <button onClick={() => alert('Settings coming soon!')} className="p-2 text-gray-400 hover:text-gray-700 rounded-xl hover:bg-gray-100 transition-all">
+            <Link to="/admin/settings" className="p-2 text-gray-400 hover:text-gray-700 rounded-xl hover:bg-gray-100 transition-all">
               <FiSettings size={18} />
-            </button>
+            </Link>
             <div className="flex items-center gap-2.5 pl-2 border-l border-gray-100 ml-1">
               <img
                 src={user?.avatar?.url || `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.name || 'Admin')}&background=D4AF37&color=fff&size=64`}
