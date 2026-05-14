@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { FiX, FiTrendingUp, FiShoppingBag } from 'react-icons/fi'
 import { useDispatch, useSelector } from 'react-redux'
@@ -20,6 +20,7 @@ const TrendingBanner = () => {
   const [currentIndex, setCurrentIndex] = useState(0)
   const [showPopup, setShowPopup] = useState(false)
   const [popupData, setPopupData] = useState(null)
+  const hasShown = useRef(false)
 
   useEffect(() => {
     // Fetch once on mount — don't poll repeatedly
@@ -42,15 +43,17 @@ const TrendingBanner = () => {
   }, [banners.length])
 
   useEffect(() => {
+    if (banners.length === 0 || hasShown.current) return
+
     const showNext = () => {
       const banner = banners[Math.floor(Math.random() * banners.length)]
       setPopupData(banner)
       setShowPopup(true)
+      hasShown.current = true
       setTimeout(() => setShowPopup(false), 4000)
     }
-    const interval = setInterval(showNext, 8000)
     const timer = setTimeout(showNext, 3000)
-    return () => { clearInterval(interval); clearTimeout(timer) }
+    return () => clearTimeout(timer)
   }, [banners])
 
   if (!trendingBannerVisible) return null
