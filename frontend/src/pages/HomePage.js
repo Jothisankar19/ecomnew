@@ -5,6 +5,7 @@ import { useDispatch, useSelector } from 'react-redux'
 import { Helmet } from 'react-helmet-async'
 import { FiArrowRight, FiStar, FiTruck, FiShield, FiRefreshCw, FiHeadphones } from 'react-icons/fi'
 import { fetchFeaturedProducts } from '../store/slices/productSlice'
+import { fetchCategories } from '../store/slices/categorySlice'
 import ProductCard from '../components/product/ProductCard'
 import { SkeletonGrid } from '../components/ui/SkeletonCard'
 import HeroSection from '../components/home/HeroSection'
@@ -142,8 +143,13 @@ const SaleBanner = () => (
 )
 
 /* ─── Shop By Type ───────────────────────────────────────────── */
-const ShopByType = () => {
-  const types = [
+const ShopByType = ({ categories }) => {
+  const types = categories?.length > 0 ? categories.slice(0, 6).map(cat => ({
+    name: cat.name,
+    slug: cat.slug,
+    desc: cat.description || 'Premium Quality',
+    img: cat.image?.url || img1
+  })) : [
     { name: 'Anarkali', slug: 'anarkali-kurtis', desc: 'Flared & Elegant', img: img1 },
     { name: 'A-Line', slug: 'a-line-kurtis', desc: 'Slim & Flattering', img: img2 },
     { name: 'Straight Cut', slug: 'straight-kurtis', desc: 'Classic & Versatile', img: img3 },
@@ -616,9 +622,11 @@ const CTASection = () => (
 const HomePage = () => {
   const dispatch = useDispatch()
   const { featured, loading } = useSelector((state) => state.products)
+  const { categories } = useSelector((state) => state.categories)
 
   useEffect(() => {
     dispatch(fetchFeaturedProducts())
+    dispatch(fetchCategories())
   }, [dispatch])
 
   const homeSchema = [
@@ -671,7 +679,7 @@ const HomePage = () => {
       <SaleBanner />
 
       {/* 4. Shop By Kurti Type */}
-      <ShopByType />
+      <ShopByType categories={categories} />
 
       {/* 4. Trending Kurtis */}
       <ProductSection

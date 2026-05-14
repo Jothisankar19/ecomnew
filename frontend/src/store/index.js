@@ -7,6 +7,7 @@ import cartReducer from './slices/cartSlice';
 import wishlistReducer from './slices/wishlistSlice';
 import productReducer from './slices/productSlice';
 import uiReducer from './slices/uiSlice';
+import categoryReducer from './slices/categorySlice';
 
 const persistConfig = {
   key: 'ethnic-elegance',
@@ -21,6 +22,7 @@ const rootReducer = combineReducers({
   wishlist: wishlistReducer,
   products: productReducer,
   ui: uiReducer,
+  categories: categoryReducer,
 });
 
 const persistedReducer = persistReducer(persistConfig, rootReducer);

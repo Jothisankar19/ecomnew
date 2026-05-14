@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { FiChevronLeft, FiChevronRight } from 'react-icons/fi'
+import { useSelector } from 'react-redux'
 
 // ── All 5 local kurti images ─────────────────────────────────
 import img1 from '../../assets/091A6888.webp'
@@ -10,7 +11,7 @@ import img3 from '../../assets/091A7713.webp'
 import img4 from '../../assets/NIJU9620.webp'
 import img5 from '../../assets/NIJU9633.webp'
 
-const slides = [
+const DEFAULT_SLIDES = [
   {
     id: 1,
     image: img1,
@@ -64,9 +65,24 @@ const slides = [
 ]
 
 const HeroSection = () => {
+  const { categories } = useSelector((state) => state.categories)
   const [current, setCurrent] = useState(0)
   const [direction, setDirection] = useState(1)
   const [paused, setPaused] = useState(false)
+
+  const slides = categories?.length > 0 ? [
+    DEFAULT_SLIDES[0],
+    ...categories.slice(0, 4).map((cat, i) => ({
+      id: i + 2,
+      image: cat.image?.url || [img2, img3, img4, img5][i % 4],
+      subtitle: cat.description || 'Premium Collection',
+      title: 'Latest',
+      highlight: cat.name,
+      badge: i % 2 === 0 ? 'New Arrival' : 'Trending Now',
+      cta: 'Explore Now',
+      link: `/category/${cat.slug}`
+    }))
+  ] : DEFAULT_SLIDES
 
   const next = useCallback(() => {
     setDirection(1)

@@ -9,8 +9,9 @@ import {
 import { toggleCart, toggleSearch, toggleMobileMenu, closeMobileMenu, openAuthModal } from '../../store/slices/uiSlice';
 import { logoutUser } from '../../store/slices/authSlice';
 import { selectCartCount } from '../../store/slices/cartSlice';
+import { fetchCategories } from '../../store/slices/categorySlice';
 
-const categories = [
+const HARDCODED_CATEGORIES = [
   // By Type
   { name: '— By Type —', slug: null, isHeader: true },
   { name: 'Anarkali Kurtis', slug: 'anarkali-kurtis' },
@@ -24,12 +25,6 @@ const categories = [
   { name: 'Embroidered Kurtis', slug: 'embroidered-kurtis' },
   { name: 'Block Print Kurtis', slug: 'block-print-kurtis' },
   { name: 'Plain Kurtis', slug: 'plain-kurtis' },
-  // By Occasion
-  { name: '— By Occasion —', slug: null, isHeader: true },
-  { name: 'Casual Kurtis', slug: 'casual-kurtis' },
-  { name: 'Office Kurtis', slug: 'office-kurtis' },
-  { name: 'Party Wear Kurtis', slug: 'party-wear-kurtis' },
-  { name: 'Festival Kurtis', slug: 'festival-kurtis' },
 ];
 
 const Navbar = () => {
@@ -43,14 +38,23 @@ const Navbar = () => {
 
   const { isAuthenticated, user } = useSelector((state) => state.auth);
   const { mobileMenuOpen } = useSelector((state) => state.ui);
+  const { categories: dynamicCategories } = useSelector((state) => state.categories);
   const cartCount = useSelector(selectCartCount);
   const wishlistCount = useSelector((state) => state.wishlist.items.length);
+
+  const navCategories = dynamicCategories?.length > 0 
+    ? [
+        { name: '— Our Collections —', slug: null, isHeader: true },
+        ...dynamicCategories.map(cat => ({ name: cat.name, slug: cat.slug }))
+      ]
+    : HARDCODED_CATEGORIES;
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 50);
     window.addEventListener('scroll', handleScroll);
+    dispatch(fetchCategories());
     return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
+  }, [dispatch]);
 
   useEffect(() => {
     dispatch(closeMobileMenu());
@@ -113,7 +117,7 @@ const Navbar = () => {
                     exit={{ opacity: 0, y: 10 }}
                     className="absolute top-full left-0 mt-2 w-64 bg-white rounded-2xl overflow-hidden shadow-xl border border-gray-100 max-h-96 overflow-y-auto"
                   >
-                    {categories.map((cat, i) =>
+                    {navCategories.map((cat, i) =>
                       cat.isHeader ? (
                         <p key={i} className="px-4 pt-3 pb-1 text-xs font-bold text-gray-400 uppercase tracking-widest">
                           {cat.name}
@@ -310,7 +314,7 @@ const Navbar = () => {
                 <div className="space-y-1">
                   <p className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em] mb-4">Collections</p>
                   <div className="grid grid-cols-1 gap-1">
-                    {categories.map((cat, index) => (
+                    {navCategories.map((cat, index) => (
                       cat.isHeader ? (
                         <p key={`header-${index}`} className="px-3 pt-4 pb-1 text-[10px] font-bold text-gray-400 uppercase tracking-widest border-t border-gray-50 mt-2 first:mt-0 first:border-0 first:pt-0">
                           {cat.name}

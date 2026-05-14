@@ -59,7 +59,7 @@ const getOrderConfirmationTemplate = (order) => {
         <p style="color: #666; margin: 0;">${order.shippingAddress.state} - ${order.shippingAddress.pincode}</p>
       </div>
 
-      <p style="font-size: 14px; color: #999;">We've attached the official receipt for your records. You can also track your order in your account dashboard.</p>
+      <p style="font-size: 14px; color: #999;">You can track your order in your account dashboard. We will notify you once it's shipped.</p>
       
       <div style="text-align: center; margin-top: 50px; padding-top: 30px; border-top: 1px solid #f0f0f0;">
         <p style="font-size: 12px; color: #ccc;">&copy; 2026 Kurti Elegance. All rights reserved.</p>
@@ -98,4 +98,32 @@ const getWelcomeTemplate = (user) => {
   `;
 };
 
-module.exports = { sendEmail, getOrderConfirmationTemplate, getWelcomeTemplate };
+/**
+ * Generates a neat HTML email template for order delivery
+ */
+const getOrderDeliveredTemplate = (order) => {
+  return `
+    <div style="font-family: sans-serif; max-width: 600px; margin: auto; border: 1px solid #f0f0f0; padding: 40px; color: #333;">
+      <div style="text-align: center; margin-bottom: 40px;">
+        <h1 style="color: #10B981; margin: 0;">KURTI ELEGANCE</h1>
+        <p style="color: #999; text-transform: uppercase; letter-spacing: 2px; font-size: 12px;">Order Delivered</p>
+      </div>
+      
+      <p>Hello ${order.shippingAddress.name.split(' ')[0]},</p>
+      <p>Your order <strong>#${order.orderId}</strong> has been successfully delivered! We hope you love your new purchase.</p>
+      
+      <div style="background: #f0fdf4; border-radius: 20px; padding: 30px; margin: 30px 0; text-align: center;">
+        <h3 style="margin-top: 0; color: #10B981;">Enjoy Your Purchase!</h3>
+        <p style="color: #666;">We have attached the official receipt for your order.</p>
+      </div>
+
+      <p style="font-size: 14px; color: #666;">We'd love to hear your feedback. Please consider leaving a review on the products you bought!</p>
+      
+      <div style="text-align: center; margin-top: 50px; padding-top: 30px; border-top: 1px solid #f0f0f0;">
+        <p style="font-size: 12px; color: #ccc;">&copy; 2026 Kurti Elegance. All rights reserved.</p>
+      </div>
+    </div>
+  `;
+};
+
+module.exports = { sendEmail, getOrderConfirmationTemplate, getWelcomeTemplate, getOrderDeliveredTemplate };

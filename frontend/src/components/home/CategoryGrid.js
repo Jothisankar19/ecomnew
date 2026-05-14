@@ -1,6 +1,7 @@
 import React from 'react'
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
+import { useSelector } from 'react-redux'
 
 // ── Your local kurti images from assets ─────────────────────
 import img1 from '../../assets/091A6888.webp'
@@ -110,12 +111,35 @@ const CategoryCard = ({ cat, index }) => (
 )
 
 const CategoryGrid = () => {
-  const groups = [...new Set(KURTI_CATEGORIES.map(c => c.group))]
+  const { categories: dynamicCategories } = useSelector((state) => state.categories)
+  
+  const gradients = [
+    'from-purple-50 to-pink-50',
+    'from-blue-50 to-cyan-50',
+    'from-teal-50 to-green-50',
+    'from-yellow-50 to-amber-50',
+    'from-rose-50 to-pink-50',
+    'from-sky-50 to-blue-50'
+  ]
+
+  const mappedCategories = dynamicCategories?.length > 0 
+    ? dynamicCategories.map((cat, i) => ({
+        name: cat.name,
+        slug: cat.slug,
+        desc: cat.description || 'Premium Collection',
+        img: cat.image?.url || img1,
+        bg: gradients[i % gradients.length],
+        group: 'All Collections',
+        count: ''
+      }))
+    : KURTI_CATEGORIES
+
+  const groups = [...new Set(mappedCategories.map(c => c.group))]
 
   return (
     <div className="space-y-12">
       {groups.map((group) => {
-        const items = KURTI_CATEGORIES.filter(c => c.group === group)
+        const items = mappedCategories.filter(c => c.group === group)
         return (
           <div key={group}>
             <div className="flex items-center gap-3 mb-6">

@@ -2,7 +2,8 @@ const Order = require('../models/Order');
 const Product = require('../models/Product');
 const Cart = require('../models/Cart');
 const Coupon = require('../models/Coupon');
-const { triggerOrderConfirmationEmail } = require('../utils/orderNotifications');
+const { triggerOrderConfirmationEmail, triggerOrderDeliveredEmail } = require('../utils/orderNotifications');
+const { generateOrderReceipt } = require('../utils/pdfGenerator');
 
 // @desc    Create new order
 // @route   POST /api/orders
@@ -232,6 +233,7 @@ exports.updateOrderStatus = async (req, res) => {
     if (status === 'delivered') {
       order.deliveredAt = new Date();
       order.payment.status = 'paid';
+      triggerOrderDeliveredEmail(order._id);
     }
     await order.save();
     res.json({ success: true, message: 'Order status updated', order });
@@ -249,6 +251,36 @@ exports.deleteOrder = async (req, res) => {
     
     await Order.findByIdAndDelete(req.params.id);
     res.json({ success: true, message: 'Order permanently deleted' });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+// @desc    Download order receipt PDF
+// @route   GET /api/orders/:id/receipt
+exports.downloadOrderReceipt = async (req, res) => {
+  try {
+    const order = await Order.findById(req.params.id)
+      .populate('user', 'name email phone')
+      .populate('items.product', 'name');
+
+    if (!order) {
+      return res.status(404).json({ success: false, message: 'Order not found' });
+    }
+
+    // Check ownership or admin
+    if (order.user._id.toString() !== req.user._id.toString() && req.user.role !== 'admin') {
+      return res.status(403).json({ success: false, message: 'Not authorized' });
+    }
+
+    const pdfBuffer = await generateOrderReceipt(order);
+
+    res.set({
+      'Content-Type': 'application/pdf',
+      'Content-Disposition': `attachment; filename=Receipt-${order.orderId}.pdf`,
+      'Content-Length': pdfBuffer.length,
+    });
+
+    res.send(pdfBuffer);
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
