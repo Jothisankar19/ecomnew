@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { motion, useInView } from 'framer-motion'
 import { useDispatch, useSelector } from 'react-redux'
@@ -17,6 +17,7 @@ import img2 from '../assets/091A7701.webp'
 import img3 from '../assets/091A7713.webp'
 import img4 from '../assets/NIJU9620.webp'
 import img5 from '../assets/NIJU9633.webp'
+import sizeGuideImg from '../assets/kurti_size_guide_diagram.png'
 
 /* ─── Helpers ────────────────────────────────────────────────── */
 const SectionTitle = ({ tag, title, description, center = true }) => {
@@ -249,6 +250,7 @@ const ShopByAge = () => {
 
 /* ─── Size Guide Banner ──────────────────────────────────────── */
 const SizeGuideBanner = () => {
+  const [activeSize, setActiveSize] = useState('M')
   const sizes = [
     { size: 'XS', chest: '32"', waist: '26"', hip: '34"', length: '44"' },
     { size: 'S', chest: '34"', waist: '28"', hip: '36"', length: '44"' },
@@ -259,44 +261,129 @@ const SizeGuideBanner = () => {
     { size: 'XXXL', chest: '44"', waist: '38"', hip: '46"', length: '50"' },
     { size: 'Free Size', chest: '36–42"', waist: '30–36"', hip: '38–44"', length: '46"' },
   ]
+  
+  const currentSizeData = sizes.find(s => s.size === activeSize)
+
   return (
-    <section className="py-14 bg-white">
+    <section className="py-14 bg-white overflow-hidden">
       <div className="page-container">
         <SectionTitle tag="Size Guide" title="Find Your Perfect Fit" description="All our kurtis are available in XS to XXXL and Free Size" />
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          className="table-responsive"
-        >
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="bg-yellow-50 border-b border-yellow-100">
-                <th className="text-left px-5 py-3.5 text-yellow-700 font-bold text-xs uppercase tracking-wider">Size</th>
-                <th className="text-center px-5 py-3.5 text-yellow-700 font-bold text-xs uppercase tracking-wider">Chest</th>
-                <th className="text-center px-5 py-3.5 text-yellow-700 font-bold text-xs uppercase tracking-wider">Waist</th>
-                <th className="text-center px-5 py-3.5 text-yellow-700 font-bold text-xs uppercase tracking-wider">Hip</th>
-                <th className="text-center px-5 py-3.5 text-yellow-700 font-bold text-xs uppercase tracking-wider">Length</th>
-              </tr>
-            </thead>
-            <tbody>
-              {sizes.map((row, i) => (
-                <tr
-                  key={row.size}
-                  className={`border-b border-gray-50 hover:bg-yellow-50/50 transition-colors ${i % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'}`}
-                >
-                  <td className="px-5 py-3 font-bold text-gray-800">{row.size}</td>
-                  <td className="px-5 py-3 text-center text-gray-600">{row.chest}</td>
-                  <td className="px-5 py-3 text-center text-gray-600">{row.waist}</td>
-                  <td className="px-5 py-3 text-center text-gray-600">{row.hip}</td>
-                  <td className="px-5 py-3 text-center text-gray-600">{row.length}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </motion.div>
-        <p className="text-center text-gray-400 text-xs mt-4">
-          * Measurements are in inches. Sizes may vary slightly by style. When in doubt, size up.
+        
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-center">
+          {/* Left: How to Measure Diagram */}
+          <motion.div 
+            initial={{ opacity: 0, x: -30 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            viewport={{ once: true }}
+            className="lg:col-span-5 flex flex-col items-center"
+          >
+            <div className="relative group">
+              <div className="absolute inset-0 bg-yellow-500/10 rounded-full blur-3xl group-hover:bg-yellow-500/20 transition-all" />
+              <img 
+                src={sizeGuideImg} 
+                alt="How to Measure Kurti" 
+                className="relative w-full max-w-[320px] h-auto drop-shadow-2xl"
+              />
+            </div>
+            <div className="mt-8 grid grid-cols-2 gap-4 w-full max-w-sm">
+              <div className="p-3 bg-gray-50 rounded-xl border border-gray-100">
+                <p className="text-[10px] font-bold text-gray-400 uppercase mb-1">Chest</p>
+                <p className="text-sm font-semibold text-gray-700">Measure around the fullest part</p>
+              </div>
+              <div className="p-3 bg-gray-50 rounded-xl border border-gray-100">
+                <p className="text-[10px] font-bold text-gray-400 uppercase mb-1">Waist</p>
+                <p className="text-sm font-semibold text-gray-700">Measure at the narrowest point</p>
+              </div>
+            </div>
+          </motion.div>
+
+          {/* Right: Size Selection / Table */}
+          <div className="lg:col-span-7">
+            {/* Mobile: Interactive Card View */}
+            <div className="lg:hidden space-y-6">
+              <div className="flex overflow-x-auto gap-3 no-scrollbar pb-2">
+                {sizes.map((s) => (
+                  <button
+                    key={s.size}
+                    onClick={() => setActiveSize(s.size)}
+                    className={`flex-shrink-0 w-16 h-16 rounded-2xl flex flex-col items-center justify-center transition-all border-2 ${
+                      activeSize === s.size 
+                        ? 'bg-yellow-500 border-yellow-500 text-white shadow-lg shadow-yellow-200 scale-110' 
+                        : 'bg-white border-gray-100 text-gray-500 hover:border-yellow-200'
+                    }`}
+                  >
+                    <span className="text-xs font-bold uppercase tracking-tighter">Size</span>
+                    <span className="text-lg font-black">{s.size}</span>
+                  </button>
+                ))}
+              </div>
+
+              <motion.div
+                key={activeSize}
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="bg-gradient-to-br from-yellow-500 to-yellow-600 rounded-3xl p-8 text-white shadow-xl shadow-yellow-100 relative overflow-hidden"
+              >
+                <div className="absolute top-0 right-0 p-4 opacity-10">
+                   <span className="text-8xl font-black">{activeSize}</span>
+                </div>
+                <h4 className="text-xl font-bold mb-6 flex items-center gap-2">
+                   Measurements for {activeSize}
+                </h4>
+                <div className="grid grid-cols-2 gap-y-6 gap-x-4">
+                   {[
+                     { label: 'Chest', value: currentSizeData.chest },
+                     { label: 'Waist', value: currentSizeData.waist },
+                     { label: 'Hip', value: currentSizeData.hip },
+                     { label: 'Length', value: currentSizeData.length },
+                   ].map((item) => (
+                     <div key={item.label} className="bg-white/10 backdrop-blur-sm rounded-2xl p-4 border border-white/20">
+                        <p className="text-[10px] font-bold text-white/70 uppercase tracking-widest mb-1">{item.label}</p>
+                        <p className="text-2xl font-black">{item.value}</p>
+                     </div>
+                   ))}
+                </div>
+              </motion.div>
+            </div>
+
+            {/* Desktop: Table View */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              className="hidden lg:block table-responsive shadow-2xl rounded-3xl overflow-hidden border border-gray-100"
+            >
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="bg-yellow-500 border-b border-yellow-600">
+                    <th className="text-left px-6 py-4 text-white font-bold text-xs uppercase tracking-wider">Size</th>
+                    <th className="text-center px-6 py-4 text-white font-bold text-xs uppercase tracking-wider">Chest</th>
+                    <th className="text-center px-6 py-4 text-white font-bold text-xs uppercase tracking-wider">Waist</th>
+                    <th className="text-center px-6 py-4 text-white font-bold text-xs uppercase tracking-wider">Hip</th>
+                    <th className="text-center px-6 py-4 text-white font-bold text-xs uppercase tracking-wider">Length</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {sizes.map((row, i) => (
+                    <tr
+                      key={row.size}
+                      className={`border-b border-gray-50 hover:bg-yellow-50 transition-colors ${i % 2 === 0 ? 'bg-white' : 'bg-gray-50/30'}`}
+                    >
+                      <td className="px-6 py-4 font-bold text-gray-800 text-lg">{row.size}</td>
+                      <td className="px-6 py-4 text-center text-gray-600 font-medium">{row.chest}</td>
+                      <td className="px-6 py-4 text-center text-gray-600 font-medium">{row.waist}</td>
+                      <td className="px-6 py-4 text-center text-gray-600 font-medium">{row.hip}</td>
+                      <td className="px-6 py-4 text-center text-gray-600 font-medium">{row.length}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </motion.div>
+          </div>
+        </div>
+        
+        <p className="text-center text-gray-400 text-[10px] mt-10 uppercase tracking-widest font-bold">
+          * Measurements are in inches · Sizes may vary slightly by style · Standard Indian Fitting
         </p>
       </div>
     </section>

@@ -8,8 +8,9 @@ import { OrbitControls, useGLTF, Environment, PresentationControls } from '@reac
 import {
   FiHeart, FiShoppingCart, FiZoomIn, FiShare2, FiTruck,
   FiShield, FiRefreshCw, FiStar, FiChevronLeft, FiChevronRight,
-  FiMinus, FiPlus, FiCheck
+  FiMinus, FiPlus, FiCheck, FiX
 } from 'react-icons/fi';
+import sizeGuideImg from '../assets/kurti_size_guide_diagram.png';
 import { fetchProduct, addToRecentlyViewed } from '../store/slices/productSlice';
 import { addToCart } from '../store/slices/cartSlice';
 import { toggleWishlist, selectIsWishlisted } from '../store/slices/wishlistSlice';
@@ -137,6 +138,17 @@ const ReviewSection = ({ productId }) => {
   );
 };
 
+const sizes = [
+  { size: 'XS', chest: '32"', waist: '26"', hip: '34"', length: '44"' },
+  { size: 'S', chest: '34"', waist: '28"', hip: '36"', length: '44"' },
+  { size: 'M', chest: '36"', waist: '30"', hip: '38"', length: '46"' },
+  { size: 'L', chest: '38"', waist: '32"', hip: '40"', length: '46"' },
+  { size: 'XL', chest: '40"', waist: '34"', hip: '42"', length: '48"' },
+  { size: 'XXL', chest: '42"', waist: '36"', hip: '44"', length: '48"' },
+  { size: 'XXXL', chest: '44"', waist: '38"', hip: '46"', length: '50"' },
+  { size: 'Free Size', chest: '36–42"', waist: '30–36"', hip: '38–44"', length: '46"' },
+];
+
 const ProductDetailPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -150,6 +162,7 @@ const ProductDetailPage = () => {
   const [selectedColor, setSelectedColor] = useState('');
   const [quantity, setQuantity] = useState(1);
   const [show3D, setShow3D] = useState(false);
+  const [showSizeModal, setShowSizeModal] = useState(false);
   const [relatedProducts, setRelatedProducts] = useState([]);
   const [zoomStyle, setZoomStyle] = useState({});
   const [customization, setCustomization] = useState({
@@ -428,7 +441,12 @@ const ProductDetailPage = () => {
                       <p className="text-gray-700 text-sm font-bold flex items-center gap-2">
                         Size: <span className="text-gray-500 font-medium">{selectedSize}</span>
                       </p>
-                      <button className="text-yellow-600 text-xs font-bold hover:underline">Size Guide</button>
+                      <button 
+                        onClick={() => setShowSizeModal(true)}
+                        className="text-yellow-600 text-xs font-bold hover:underline"
+                      >
+                        Size Guide
+                      </button>
                     </div>
                     <div className="flex flex-wrap gap-3">
                       {product.sizes.map((s) => (
@@ -448,6 +466,28 @@ const ProductDetailPage = () => {
                         </button>
                       ))}
                     </div>
+
+                    {/* Dynamic Size Measurements Card */}
+                    <AnimatePresence>
+                      {selectedSize && (
+                        <motion.div 
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: 'auto' }}
+                          exit={{ opacity: 0, height: 0 }}
+                          className="mt-6 overflow-hidden"
+                        >
+                          <div className="bg-gradient-to-r from-yellow-50 to-white rounded-2xl border border-yellow-100 p-4 grid grid-cols-4 gap-2">
+                            {Object.entries(sizes.find(s => s.size === selectedSize) || {}).filter(([k]) => k !== 'size').map(([key, val]) => (
+                              <div key={key} className="text-center">
+                                <p className="text-[9px] font-bold text-yellow-600 uppercase tracking-widest mb-1">{key}</p>
+                                <p className="text-sm font-black text-gray-800">{val}</p>
+                              </div>
+                            ))}
+                          </div>
+                          <p className="text-[10px] text-gray-400 mt-2 italic">* Measurements in inches for the best fit</p>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
                   </div>
                 )}
 
@@ -698,6 +738,85 @@ const ProductDetailPage = () => {
           {product.stock > 0 ? 'Buy Now' : 'Sold Out'}
         </button>
       </div>
+
+      {/* Size Guide Modal */}
+      <AnimatePresence>
+        {showSizeModal && (
+          <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowSizeModal(false)}
+              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="relative bg-white w-full max-w-4xl max-h-[90vh] overflow-hidden rounded-3xl shadow-2xl flex flex-col"
+            >
+              <div className="p-6 border-b border-gray-100 flex items-center justify-between">
+                <h3 className="text-xl font-bold text-gray-800 font-display">Size Guide & Fit</h3>
+                <button onClick={() => setShowSizeModal(false)} className="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center text-gray-400 hover:text-gray-900 transition-colors">
+                  <FiX size={20} />
+                </button>
+              </div>
+              
+              <div className="flex-1 overflow-y-auto p-6 md:p-10 no-scrollbar">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-10 items-start">
+                  <div className="flex flex-col items-center">
+                    <img src={sizeGuideImg} alt="How to measure" className="w-full max-w-[280px] h-auto drop-shadow-xl" />
+                    <div className="mt-8 space-y-4 w-full">
+                       <div className="p-4 bg-gray-50 rounded-2xl border border-gray-100">
+                          <p className="text-xs font-bold text-yellow-600 uppercase mb-1">How to Measure</p>
+                          <p className="text-sm text-gray-600 leading-relaxed">
+                            Use a soft measuring tape. Keep it level and not too tight. Measure over your undergarments for the most accurate results.
+                          </p>
+                       </div>
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <div className="overflow-x-auto rounded-2xl border border-gray-100">
+                      <table className="w-full text-sm">
+                        <thead className="bg-yellow-50">
+                          <tr>
+                            <th className="px-4 py-3 text-left text-xs font-bold text-yellow-700 uppercase">Size</th>
+                            <th className="px-4 py-3 text-center text-xs font-bold text-yellow-700 uppercase">Chest</th>
+                            <th className="px-4 py-3 text-center text-xs font-bold text-yellow-700 uppercase">Waist</th>
+                            <th className="px-4 py-3 text-center text-xs font-bold text-yellow-700 uppercase">Hip</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-50">
+                          {sizes.map((s) => (
+                            <tr key={s.size} className={selectedSize === s.size ? 'bg-yellow-50/50' : ''}>
+                              <td className="px-4 py-3 font-bold text-gray-800">{s.size}</td>
+                              <td className="px-4 py-3 text-center text-gray-600">{s.chest}</td>
+                              <td className="px-4 py-3 text-center text-gray-600">{s.waist}</td>
+                              <td className="px-4 py-3 text-center text-gray-600">{s.hip}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                    <p className="text-[10px] text-gray-400 mt-4 uppercase tracking-widest text-center">* All measurements are in inches</p>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="p-6 border-t border-gray-100 bg-gray-50/50">
+                 <button 
+                  onClick={() => setShowSizeModal(false)}
+                  className="w-full py-4 bg-yellow-500 text-white font-bold rounded-2xl shadow-lg shadow-yellow-100 hover:bg-yellow-600 transition-colors"
+                 >
+                   Got it, thanks!
+                 </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </>
   );
 };
