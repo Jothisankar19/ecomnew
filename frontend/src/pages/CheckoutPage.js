@@ -441,20 +441,6 @@ const CheckoutPage = () => {
           </div>
         </div>
       </div>
-      {/* Sticky Mobile Summary Bar */}
-      <div className="sticky-mobile-bar flex items-center justify-between gap-4">
-        <div>
-          <p className="text-gray-400 text-[10px] font-bold uppercase tracking-widest">Total to Pay</p>
-          <p className="text-yellow-600 text-xl font-black">{formatPrice(total)}</p>
-        </div>
-        <button 
-          onClick={step === 2 ? handlePlaceOrder : () => setStep(step + 1)}
-          disabled={loading}
-          className="flex-1 bg-yellow-500 text-white font-bold py-3.5 rounded-2xl flex items-center justify-center gap-2 shadow-lg shadow-yellow-100 disabled:opacity-50"
-        >
-          {step === 2 ? (loading ? 'Processing...' : 'Pay Now') : 'Next Step'} <FiArrowRight size={18} />
-        </button>
-      </div>
     </>
   );
 };
