@@ -96,7 +96,7 @@ const CheckItem = ({ label, count, checked, onChange }) => (
 )
 
 /* ── Sidebar ─────────────────────────────────────────────────── */
-const FilterSidebar = ({ localFilters, setLocalFilters, onApply, onClear, categories }) => {
+const FilterSidebar = ({ localFilters, setLocalFilters, onApply, onClear, categories, lockedCategoryId, lockedCategoryName }) => {
   const toggle = (key, value) => {
     setLocalFilters(prev => {
       const arr = prev[key] || []
@@ -125,7 +125,7 @@ const FilterSidebar = ({ localFilters, setLocalFilters, onApply, onClear, catego
           </button>
         </div>
 
-        {/* Color */}
+
         <FilterSection title="Colour">
           <div className="flex flex-wrap gap-2">
             {COLORS.map(c => (
@@ -133,9 +133,8 @@ const FilterSidebar = ({ localFilters, setLocalFilters, onApply, onClear, catego
                 key={c.name}
                 onClick={() => toggle('colors', c.name)}
                 title={c.name}
-                className={`w-6 h-6 rounded-full border-2 transition-all ${
-                  isChecked('colors', c.name) ? 'border-yellow-500 scale-110 shadow-md' : 'border-gray-200 hover:border-gray-400'
-                }`}
+                className={`w-6 h-6 rounded-full border-2 transition-all ${isChecked('colors', c.name) ? 'border-yellow-500 scale-110 shadow-md' : 'border-gray-200 hover:border-gray-400'
+                  }`}
                 style={{ backgroundColor: c.hex }}
               />
             ))}
@@ -211,11 +210,10 @@ const FilterSidebar = ({ localFilters, setLocalFilters, onApply, onClear, catego
                 <button
                   key={label}
                   onClick={() => setLocalFilters(prev => ({ ...prev, minPrice: min, maxPrice: max }))}
-                  className={`text-xs px-2.5 py-1 rounded-full border transition-all ${
-                    localFilters.minPrice === min && localFilters.maxPrice === max
+                  className={`text-xs px-2.5 py-1 rounded-full border transition-all ${localFilters.minPrice === min && localFilters.maxPrice === max
                       ? 'bg-yellow-500 text-white border-yellow-500'
                       : 'border-gray-200 text-gray-500 hover:border-yellow-400 hover:text-yellow-600'
-                  }`}
+                    }`}
                 >
                   {label}
                 </button>
@@ -231,11 +229,10 @@ const FilterSidebar = ({ localFilters, setLocalFilters, onApply, onClear, catego
               <button
                 key={s}
                 onClick={() => toggle('sizes', s)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${
-                  isChecked('sizes', s)
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${isChecked('sizes', s)
                     ? 'bg-yellow-500 text-white border-yellow-500'
                     : 'border-gray-200 text-gray-600 hover:border-yellow-400 hover:text-yellow-600'
-                }`}
+                  }`}
               >
                 {s}
               </button>
@@ -279,6 +276,7 @@ const ProductsPage = () => {
   const [searchParams, setSearchParams] = useSearchParams()
   const { products, total, pages, loading, filters } = useSelector(state => state.products)
   const [categories, setCategories] = useState([])
+  const [activeCategoryName, setActiveCategoryName] = useState('')
   const [mobileFilterOpen, setMobileFilterOpen] = useState(false)
   const [page, setPage] = useState(1)
   const [sort, setSort] = useState('newest')
@@ -291,28 +289,49 @@ const ProductsPage = () => {
     minPrice: '', maxPrice: '',
   })
 
-  // Sync URL params on mount
+  // Read URL params once on mount
+  const urlCategoryId = searchParams.get('category') || ''
+
+  // Sync URL params to Redux filters dynamically whenever query parameters change
   useEffect(() => {
     const params = {}
     searchParams.forEach((v, k) => { params[k] = v })
-    if (params.sort) setSort(params.sort)
+    if (params.sort) {
+      setSort(params.sort)
+    } else {
+      setSort('newest')
+    }
     dispatch(setFilters(params))
-  }, [])
+    setPage(1)
+  }, [searchParams, dispatch])
 
-  // Fetch products
+  // Fetch products — always include URL category to prevent race condition
   useEffect(() => {
     const params = { ...filters, sort, page }
+    // Always enforce the URL category param (guards against stale Redux state on first render)
+    if (urlCategoryId) params.category = urlCategoryId
     Object.keys(params).forEach(k => !params[k] && delete params[k])
     dispatch(fetchProducts(params))
-  }, [filters, sort, page, dispatch])
+  }, [filters, sort, page, dispatch, urlCategoryId])
 
-  // Fetch categories
+  // Fetch categories and resolve active category name from URL param
   useEffect(() => {
-    api.get('/categories').then(({ data }) => setCategories(data.categories || []))
+    api.get('/categories').then(({ data }) => {
+      const cats = data.categories || []
+      setCategories(cats)
+      // If we arrived with ?category=<id>, resolve the name for display
+      const categoryId = searchParams.get('category')
+      if (categoryId) {
+        const found = cats.find(c => c._id === categoryId)
+        if (found) setActiveCategoryName(found.name)
+      }
+    })
   }, [])
 
   const handleApplyFilters = () => {
     const newFilters = {}
+    // Always preserve the URL category (flash sale category)
+    if (urlCategoryId) newFilters.category = urlCategoryId
     if (localFilters.minPrice) newFilters.minPrice = localFilters.minPrice
     if (localFilters.maxPrice) newFilters.maxPrice = localFilters.maxPrice
     if (localFilters.sizes.length) newFilters.size = localFilters.sizes[0]
@@ -324,17 +343,23 @@ const ProductsPage = () => {
 
   const handleClearFilters = () => {
     setLocalFilters({ colors: [], categoryNames: [], fabrics: [], fits: [], patterns: [], sizes: [], sleeves: [], necks: [], minPrice: '', maxPrice: '' })
-    dispatch(setFilters({ category: '', minPrice: '', maxPrice: '', rating: '', size: '', sort: 'newest' }))
+    // Preserve the URL category (flash sale category) when clearing sidebar filters
+    dispatch(setFilters({ category: urlCategoryId || '', minPrice: '', maxPrice: '', rating: '', size: '', sort: 'newest' }))
     setPage(1)
   }
 
   // Page title from URL
+  const isFlashSaleCategory = !!searchParams.get('category') && !!activeCategoryName
   const pageTitle = searchParams.get('isTrending') ? 'Trending Kurtis'
     : searchParams.get('isNewArrival') ? 'New Arrivals'
-    : searchParams.get('isBestSeller') ? 'Best Sellers'
-    : 'Kurtis And Kurta for Women'
+      : searchParams.get('isBestSeller') ? 'Best Sellers'
+        : searchParams.get('hasDiscount') ? 'Flash Sale Deals'
+          : isFlashSaleCategory ? `${activeCategoryName} – Flash Sale`
+            : 'Kurtis And Kurta for Women'
 
-  const pageDesc = 'Buy Kurtis online at best prices. Shop from our wide collection of Anarkali, Printed, Embroidered, Straight, A-Line kurtis in all sizes.'
+  const pageDesc = searchParams.get('hasDiscount') || isFlashSaleCategory
+    ? `Shop limited-time flash sale offers on ${activeCategoryName || 'premium ethnic kurtis'} before stocks run out!`
+    : 'Buy Kurtis online at best prices. Shop from our wide collection of Anarkali, Printed, Embroidered, Straight, A-Line kurtis in all sizes.'
 
   return (
     <>
@@ -356,9 +381,19 @@ const ProductsPage = () => {
 
           {/* Page Header */}
           <div className="mb-5">
-            <h1 className="font-display text-2xl font-bold text-gray-800 mb-1">{pageTitle}</h1>
+            <div className="flex items-center gap-3 flex-wrap mb-1">
+              <h1 className="font-display text-2xl font-bold text-gray-800">{pageTitle}</h1>
+              {isFlashSaleCategory && (
+                <span className="inline-flex items-center gap-1.5 bg-red-50 border border-red-200 text-red-600 text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full">
+                  <span className="relative flex h-1.5 w-1.5">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-red-500"></span>
+                  </span>
+                  Flash Sale Active
+                </span>
+              )}
+            </div>
             <p className="text-gray-400 text-sm">{pageDesc}</p>
-            <button className="text-yellow-600 text-xs font-semibold mt-1 hover:underline">Read More</button>
           </div>
 
           <div className="flex gap-6">
@@ -370,11 +405,14 @@ const ProductsPage = () => {
                 onApply={handleApplyFilters}
                 onClear={handleClearFilters}
                 categories={categories}
+                lockedCategoryId={urlCategoryId}
+                lockedCategoryName={activeCategoryName}
               />
             </aside>
 
             {/* ── Products Area ── */}
             <div className="flex-1 min-w-0">
+
               {/* Toolbar */}
               <div className="flex items-center justify-between mb-5 bg-white rounded-xl border border-gray-100 px-4 py-3 shadow-sm">
                 <div className="flex items-center gap-3">
@@ -445,34 +483,63 @@ const ProductsPage = () => {
                 </div>
               )}
 
-              {/* Product Grid */}
-              {loading ? (
-                <SkeletonGrid count={12} />
-              ) : products.length === 0 ? (
-                <div className="text-center py-24 bg-white rounded-2xl border border-gray-100">
-                  <p className="text-5xl mb-4">🔍</p>
-                  <h3 className="text-gray-700 text-lg font-semibold mb-2">No kurtis found</h3>
-                  <p className="text-gray-400 text-sm mb-4">Try adjusting your filters</p>
-                  <button onClick={handleClearFilters} className="btn-primary text-sm">Clear Filters</button>
-                </div>
-              ) : (
-                <div className={
-                  viewMode === 'grid'
-                    ? 'grid grid-cols-2 md:grid-cols-3 gap-4'
-                    : 'flex flex-col gap-4'
-                }>
-                  {products.map((product, i) => (
+              {/* Product Grid Container with Custom Page Loader */}
+              <div className="relative min-h-[400px]">
+                {/* Premium Themed Loader Overlay */}
+                <AnimatePresence>
+                  {loading && (
                     <motion.div
-                      key={product._id}
-                      initial={{ opacity: 0, y: 16 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: i * 0.03 }}
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      className="absolute inset-0 bg-white/40 backdrop-blur-[2px] flex flex-col items-center justify-start pt-24 z-10 transition-all duration-300 pointer-events-none"
                     >
-                      <ProductCard product={product} />
+                      <div className="flex flex-col items-center gap-4 bg-white/95 p-8 rounded-3xl border border-gray-100/60 shadow-xl max-w-xs text-center backdrop-blur-md sticky top-36 pointer-events-auto">
+                        {/* Rotating Gold Embroidery Hoop Spinner */}
+                        <div className="relative w-14 h-14">
+                          <div className="absolute inset-0 rounded-full border-[3px] border-yellow-100 border-t-yellow-600 animate-spin" />
+                          <div className="absolute inset-2 rounded-full bg-yellow-500/10 flex items-center justify-center animate-pulse">
+                            <span className="text-yellow-600 font-serif text-[9px] font-black tracking-widest">KE</span>
+                          </div>
+                        </div>
+                        <div>
+                          <h4 className="text-gray-800 font-serif text-sm font-bold tracking-wide">Loading Please Wait...</h4>
+                          <p className="text-gray-400 text-[9px] uppercase tracking-[0.2em] mt-1">Stitching perfect fits</p>
+                        </div>
+                      </div>
                     </motion.div>
-                  ))}
-                </div>
-              )}
+                  )}
+                </AnimatePresence>
+
+                {/* Skeletons on initial mount or Empty State or Product Cards Grid */}
+                {products.length === 0 && !loading ? (
+                  <div className="text-center py-24 bg-white rounded-2xl border border-gray-100">
+                    <p className="text-5xl mb-4">🔍</p>
+                    <h3 className="text-gray-700 text-lg font-semibold mb-2">No kurtis found</h3>
+                    <p className="text-gray-400 text-sm mb-4">Try adjusting your filters</p>
+                    <button onClick={handleClearFilters} className="btn-primary text-sm">Clear Filters</button>
+                  </div>
+                ) : products.length === 0 && loading ? (
+                  <SkeletonGrid count={9} />
+                ) : (
+                  <div className={
+                    viewMode === 'grid'
+                      ? 'grid grid-cols-2 md:grid-cols-3 gap-4'
+                      : 'flex flex-col gap-4'
+                  }>
+                    {products.map((product, i) => (
+                      <motion.div
+                        key={product._id}
+                        initial={{ opacity: 0, y: 16 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: i * 0.02 }}
+                      >
+                        <ProductCard product={product} />
+                      </motion.div>
+                    ))}
+                  </div>
+                )}
+              </div>
 
               {/* Pagination */}
               {pages > 1 && (
@@ -481,9 +548,8 @@ const ProductsPage = () => {
                     <button
                       key={p}
                       onClick={() => setPage(p)}
-                      className={`w-9 h-9 rounded-xl text-sm font-medium transition-all ${
-                        p === page ? 'bg-yellow-500 text-white shadow-md' : 'bg-white border border-gray-200 text-gray-600 hover:border-yellow-400 hover:text-yellow-600'
-                      }`}
+                      className={`w-9 h-9 rounded-xl text-sm font-medium transition-all ${p === page ? 'bg-yellow-500 text-white shadow-md' : 'bg-white border border-gray-200 text-gray-600 hover:border-yellow-400 hover:text-yellow-600'
+                        }`}
                     >
                       {p}
                     </button>
@@ -494,6 +560,30 @@ const ProductsPage = () => {
           </div>
         </div>
       </div>
+
+      {/* ── Sticky Mobile Action Pill ── */}
+      {!mobileFilterOpen && (
+        <div className="lg:hidden fixed bottom-6 left-1/2 -translate-x-1/2 z-40 bg-white/95 backdrop-blur-md px-6 py-3 rounded-full border border-gray-200/50 shadow-2xl flex items-center gap-6 divide-x divide-gray-150 transition-all duration-300">
+          <button
+            onClick={() => setMobileFilterOpen(true)}
+            className="flex items-center gap-2 text-gray-700 font-bold text-xs uppercase tracking-wider hover:text-yellow-600 transition-colors active:scale-95"
+          >
+            <FiFilter size={14} className="text-yellow-600 animate-pulse" /> Filters
+          </button>
+          <div className="pl-6 flex items-center gap-2">
+            <FiList size={14} className="text-yellow-600" />
+            <select
+              value={sort}
+              onChange={e => { setSort(e.target.value); setPage(1) }}
+              className="bg-transparent text-gray-700 font-bold text-xs uppercase tracking-wider focus:outline-none cursor-pointer pr-1"
+            >
+              {SORT_OPTIONS.map(o => (
+                <option key={o.value} value={o.value}>{o.label}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+      )}
 
       {/* ── Mobile Filter Drawer ── */}
       <AnimatePresence>
@@ -525,6 +615,8 @@ const ProductsPage = () => {
                 onApply={handleApplyFilters}
                 onClear={handleClearFilters}
                 categories={categories}
+                lockedCategoryId={urlCategoryId}
+                lockedCategoryName={activeCategoryName}
               />
             </motion.div>
           </motion.div>

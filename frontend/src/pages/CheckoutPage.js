@@ -3,7 +3,10 @@ import { useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Helmet } from 'react-helmet-async';
-import { FiCheck, FiCreditCard, FiMapPin, FiPackage, FiArrowRight, FiChevronLeft, FiPhone, FiUser, FiInfo } from 'react-icons/fi';
+import { 
+  FiCheck, FiCreditCard, FiMapPin, FiPackage, FiArrowRight, 
+  FiChevronLeft, FiPhone, FiUser, FiInfo, FiTag, FiZap, FiX 
+} from 'react-icons/fi';
 import { selectCartItems, selectCartSubtotal, clearCartLocal } from '../store/slices/cartSlice';
 import { formatPrice } from '../utils/helpers';
 import api from '../utils/api';
@@ -21,7 +24,6 @@ const CheckoutPage = () => {
   const { user } = useSelector((state) => state.auth);
   const items = useSelector(selectCartItems);
   const subtotal = useSelector(selectCartSubtotal);
-  const { coupon } = useSelector((state) => state.cart);
 
   const [step, setStep] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -37,18 +39,74 @@ const CheckoutPage = () => {
   });
   const [paymentMethod, setPaymentMethod] = useState('razorpay');
 
-  const shipping = subtotal > 999 ? 0 : 99;
-  const couponDiscount = coupon?.discount || 0;
-  const tax = Math.round((subtotal - couponDiscount) * 0.05);
-  const total = subtotal - couponDiscount + shipping + tax;
+  // Coupon / Flash Voucher States
+  const [voucherCodeInput, setVoucherCodeInput] = useState('');
+  const [activeVoucher, setActiveVoucher] = useState(null);
+  const [voucherDiscount, setVoucherDiscount] = useState(0);
+  const [bestOffers, setBestOffers] = useState([]);
+  const [validating, setValidating] = useState(false);
 
+  // Load best offers on page mount
   useEffect(() => {
-    const script = document.createElement('script');
-    script.src = 'https://checkout.razorpay.com/v1/checkout.js';
-    script.async = true;
-    document.body.appendChild(script);
-    return () => document.body.removeChild(script);
-  }, []);
+    const fetchBestOffers = async () => {
+      try {
+        const { data } = await api.post('/flash-sales/best', {
+          cartAmount: subtotal,
+          cartItems: items.map(i => ({
+            product: i.product._id,
+            category: i.product.category?._id || i.product.category,
+            price: i.product.discountPrice || i.product.price,
+            quantity: i.quantity
+          }))
+        });
+        setBestOffers(data.recommendations || []);
+      } catch (err) {
+        console.warn('Could not fetch voucher suggestions', err);
+      }
+    };
+    if (subtotal > 0) {
+      fetchBestOffers();
+    }
+  }, [subtotal, items]);
+
+  // Dynamic Billing Calculation Formulas
+  const isFlashApplied = activeVoucher !== null;
+  const shipping = isFlashApplied ? 65 : (subtotal > 999 ? 0 : 99); // Delivery: ₹65 during flash sale
+  const tax = Math.round((subtotal - voucherDiscount) * 0.05); // GST: 5% on discounted amount
+  const total = subtotal - voucherDiscount + shipping + tax;
+
+  const handleApplyVoucher = async (codeToApply) => {
+    const targetCode = codeToApply || voucherCodeInput;
+    if (!targetCode) return;
+
+    setValidating(true);
+    try {
+      const { data } = await api.post('/flash-sales/validate', {
+        code: targetCode.toUpperCase(),
+        cartAmount: subtotal,
+        cartItems: items.map(i => ({
+          product: i.product._id,
+          category: i.product.category?._id || i.product.category,
+          price: i.product.discountPrice || i.product.price,
+          quantity: i.quantity
+        }))
+      });
+
+      setActiveVoucher(data.voucher);
+      setVoucherDiscount(data.discount);
+      setVoucherCodeInput('');
+      toast.success(`Voucher ${data.voucher.code} applied! Saved ₹${data.discount}`);
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Invalid or expired voucher code');
+    }
+    setValidating(false);
+  };
+
+  const handleRemoveVoucher = () => {
+    setActiveVoucher(null);
+    setVoucherDiscount(0);
+    toast.success('Voucher removed');
+  };
 
   const handleAddressSubmit = (e) => {
     e.preventDefault();
@@ -73,7 +131,7 @@ const CheckoutPage = () => {
         })),
         shippingAddress: address,
         payment: { method: paymentMethod },
-        couponCode: coupon?.code,
+        couponCode: activeVoucher?.code,
       };
 
       const { data } = await api.post('/orders', orderData);
@@ -82,7 +140,7 @@ const CheckoutPage = () => {
         await initiateRazorpay(data.order._id);
       } else {
         dispatch(clearCartLocal());
-        navigate(`/payment-success?orderId=${data.order.orderId}`);
+        navigate(`/payment-success?orderId=${data.order._id}`);
       }
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to place order');
@@ -115,7 +173,7 @@ const CheckoutPage = () => {
               orderId: orderDbId,
             });
             dispatch(clearCartLocal());
-            navigate(`/payment-success?orderId=${data.order.orderId}&paymentId=${response.razorpay_payment_id}`);
+            navigate(`/payment-success?orderId=${orderDbId}&paymentId=${response.razorpay_payment_id}`);
           } catch {
             toast.error('Payment verification failed');
           }
@@ -397,23 +455,85 @@ const CheckoutPage = () => {
               </AnimatePresence>
             </div>
 
-            {/* Sticky Order Summary Area (Cols 9-12) */}
+            {/* Sticky Order Summary Area with Flash Voucher code validation */}
             <div className="lg:col-span-4 space-y-6 sticky top-28">
               <div className="bg-white rounded-3xl p-6 lg:p-8 shadow-sm border border-gray-100">
-                <h3 className="text-gray-900 font-bold text-xl mb-8">Summary</h3>
+                <h3 className="text-gray-900 font-bold text-xl mb-6">Summary</h3>
+
+                {/* VOUCHER VALIDATION BOX */}
+                <div className="mb-6 pb-6 border-b border-gray-100">
+                  <label className="text-gray-500 text-xs font-bold uppercase tracking-wider block mb-2">Have a Flash Voucher?</label>
+                  {activeVoucher ? (
+                    <div className="bg-green-50 border border-green-100 rounded-2xl p-4 flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <FiZap className="text-green-600 animate-pulse" />
+                        <div>
+                          <span className="font-mono font-black text-green-700 block tracking-widest text-sm">{activeVoucher.code}</span>
+                          <span className="text-[10px] text-green-600 font-medium block">Saved {formatPrice(voucherDiscount)}!</span>
+                        </div>
+                      </div>
+                      <button 
+                        onClick={handleRemoveVoucher} 
+                        className="p-1.5 hover:bg-green-200/50 rounded-lg text-green-600 transition-colors"
+                      >
+                        <FiX size={16} />
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      <div className="flex gap-2">
+                        <input
+                          value={voucherCodeInput}
+                          onChange={(e) => setVoucherCodeInput(e.target.value.toUpperCase())}
+                          placeholder="e.g. FLASH20"
+                          className="flex-1 px-4 py-2.5 bg-gray-50 border border-gray-100 rounded-xl focus:outline-none focus:border-yellow-500 font-mono tracking-widest text-sm uppercase"
+                        />
+                        <button
+                          onClick={() => handleApplyVoucher()}
+                          disabled={validating}
+                          className="bg-yellow-500 hover:bg-yellow-600 text-white font-bold px-4 py-2.5 rounded-xl text-xs uppercase tracking-wider transition-colors disabled:opacity-50"
+                        >
+                          {validating ? 'Applying...' : 'Apply'}
+                        </button>
+                      </div>
+
+                      {/* Best Offers Recommendation Pills */}
+                      {bestOffers.length > 0 && (
+                        <div className="space-y-1.5">
+                          <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">Recommended Offers</span>
+                          <div className="flex flex-wrap gap-2">
+                            {bestOffers.map((offer) => (
+                              <button
+                                key={offer.code}
+                                onClick={() => handleApplyVoucher(offer.code)}
+                                className={`text-[10px] font-black uppercase tracking-wider px-2.5 py-1.5 rounded-lg border transition-all ${
+                                  offer.isFestivalPromo ? 'bg-pink-50 border-pink-100 text-pink-600 hover:bg-pink-100' : 'bg-yellow-50 border-yellow-100 text-yellow-600 hover:bg-yellow-100'
+                                }`}
+                              >
+                                {offer.code} (Save {formatPrice(offer.estimatedSavings)})
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* DYNAMIC PRICE BREAKDOWN */}
                 <div className="space-y-4 mb-8">
                   <div className="flex justify-between text-gray-500 font-medium">
                     <span>Order Subtotal</span>
                     <span className="text-gray-900 font-bold">{formatPrice(subtotal)}</span>
                   </div>
-                  {couponDiscount > 0 && (
+                  {voucherDiscount > 0 && (
                     <div className="flex justify-between text-green-600 font-bold">
-                      <span>Applied Coupon</span>
-                      <span>-{formatPrice(couponDiscount)}</span>
+                      <span className="flex items-center gap-1.5"><FiZap size={14} className="animate-pulse" /> Applied Voucher</span>
+                      <span>-{formatPrice(voucherDiscount)}</span>
                     </div>
                   )}
                   <div className="flex justify-between text-gray-500 font-medium">
-                    <span>Standard Shipping</span>
+                    <span>Delivery Charge {isFlashApplied && <span className="text-[10px] text-yellow-600 font-black tracking-wide uppercase bg-yellow-50 px-1.5 py-0.5 rounded border border-yellow-100 ml-1">Flash Offer</span>}</span>
                     <span className={shipping === 0 ? 'text-green-600 font-bold' : 'text-gray-900 font-bold'}>
                       {shipping === 0 ? 'FREE' : formatPrice(shipping)}
                     </span>

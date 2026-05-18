@@ -7,6 +7,7 @@ import TrendingBanner from '../ui/TrendingBanner'
 import SearchModal from '../ui/SearchModal'
 import AuthModal from '../auth/AuthModal'
 import WhatsAppButton from '../ui/WhatsAppButton'
+
 import ScrollToTop from '../ui/ScrollToTop'
 import { useSelector } from 'react-redux'
 
@@ -14,7 +15,7 @@ const Layout = () => {
   const { cartOpen, searchOpen, authModalOpen } = useSelector((state) => state.ui)
 
   return (
-    <div className="min-h-screen bg-white text-gray-800">
+    <div className="min-h-screen bg-transparent text-gray-800">
       <TrendingBanner />
       <Navbar />
       <main>
@@ -25,6 +26,7 @@ const Layout = () => {
       {searchOpen && <SearchModal />}
       {authModalOpen && <AuthModal />}
       <WhatsAppButton />
+
       <ScrollToTop />
     </div>
   )

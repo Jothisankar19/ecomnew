@@ -56,7 +56,7 @@ const Footer = () => {
                 { label: 'All Products', to: '/products' },
                 { label: 'New Arrivals', to: '/products?isNewArrival=true' },
                 { label: 'Trending', to: '/products?isTrending=true' },
-                { label: 'Sale', to: '/products?sort=discount' },
+                { label: 'About Us', to: '/about' },
               ].map((link) => (
                 <li key={link.label}>
                   <Link to={link.to} className="text-gray-500 hover:text-yellow-600 text-sm transition-colors">

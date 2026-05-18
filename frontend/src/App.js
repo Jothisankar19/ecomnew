@@ -27,6 +27,8 @@ const ResetPasswordPage = lazy(() => import('./pages/ResetPasswordPage'));
 const VerifyOTPPage     = lazy(() => import('./pages/VerifyOTPPage'));
 const CategoryPage      = lazy(() => import('./pages/CategoryPage'));
 const SearchPage        = lazy(() => import('./pages/SearchPage'));
+const FlashSalesPage    = lazy(() => import('./pages/FlashSalesPage'));
+const AboutPage         = lazy(() => import('./pages/AboutPage'));
 const NotFoundPage      = lazy(() => import('./pages/NotFoundPage'));
 
 // ── Admin pages ───────────────────────────────────────────────
@@ -73,8 +75,10 @@ function App() {
             <Route path="products/:id" element={<ProductDetailPage />} />
             <Route path="category/:slug" element={<CategoryPage />} />
             <Route path="search" element={<SearchPage />} />
+            <Route path="flash-sales" element={<FlashSalesPage />} />
             <Route path="cart" element={<CartPage />} />
             <Route path="wishlist" element={<WishlistPage />} />
+            <Route path="about" element={<AboutPage />} />
 
             {/* Auth */}
             <Route path="login" element={isAuthenticated ? <Navigate to="/" /> : <LoginPage />} />

@@ -139,6 +139,17 @@ const Navbar = () => {
 
             <Link to="/products?isTrending=true" className="nav-link">Trending</Link>
             <Link to="/products?isNewArrival=true" className="nav-link">New Arrivals</Link>
+            <Link to="/about" className="nav-link">About Us</Link>
+            <Link 
+              to="/flash-sales" 
+              className="nav-link flex items-center gap-1.5 text-yellow-600 hover:text-yellow-700 font-extrabold transition-all"
+            >
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+              </span>
+              Flash Sale
+            </Link>
           </div>
 
           {/* Right Actions */}
@@ -293,9 +304,11 @@ const Navbar = () => {
                   <p className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em] mb-4">Quick Links</p>
                   {[
                     { label: 'Home', to: '/', icon: null },
+                    { label: 'Flash Sale', to: '/flash-sales', icon: '⚡' },
                     { label: 'New Arrivals', to: '/products?isNewArrival=true', icon: '✨' },
                     { label: 'Trending Now', to: '/products?isTrending=true', icon: '🔥' },
                     { label: 'Shop All', to: '/products', icon: '🛍️' },
+                    { label: 'About Us', to: '/about', icon: '📖' },
                   ].map((item) => (
                     <Link
                       key={item.label}

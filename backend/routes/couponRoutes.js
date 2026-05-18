@@ -13,6 +13,39 @@ router.get('/admin', protect, adminOnly, async (req, res) => {
   }
 });
 
+// Public: Get currently active promotions
+router.get('/active', async (req, res) => {
+  try {
+    const now = new Date();
+    const coupons = await Coupon.find({
+      isActive: true,
+      $or: [
+        { showBanner: true },
+        {
+          $and: [
+            {
+              $or: [
+                { validFrom: null },
+                { validFrom: { $lte: now } }
+              ]
+            },
+            {
+              $or: [
+                { validUntil: null },
+                { validUntil: { $gte: now } },
+                { expiresAt: { $gte: now } }
+              ]
+            }
+          ]
+        }
+      ]
+    }).populate('applicableCategories').populate('applicableProducts');
+    res.json({ success: true, coupons });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 router.get('/', protect, adminOnly, async (req, res) => {
   try {
     const coupons = await Coupon.find().sort({ createdAt: -1 });

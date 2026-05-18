@@ -7,13 +7,16 @@ exports.getProducts = async (req, res) => {
   try {
     const {
       keyword, category, minPrice, maxPrice, rating, size, color,
-      sort, page = 1, limit = 12, isFeatured, isTrending, isNewArrival, isBestSeller
+      sort, page = 1, limit = 12, isFeatured, isTrending, isNewArrival, isBestSeller, hasDiscount, ids
     } = req.query;
 
     const query = { isActive: true };
 
     if (keyword) {
       query.$text = { $search: keyword };
+    }
+    if (ids) {
+      query._id = { $in: ids.split(',') };
     }
     if (category) query.category = category;
     if (minPrice || maxPrice) {
@@ -28,6 +31,9 @@ exports.getProducts = async (req, res) => {
     if (isTrending === 'true') query.isTrending = true;
     if (isNewArrival === 'true') query.isNewArrival = true;
     if (isBestSeller === 'true') query.isBestSeller = true;
+    if (hasDiscount === 'true') {
+      query.discountPrice = { $gt: 0, $ne: null };
+    }
 
     let sortObj = {};
     switch (sort) {

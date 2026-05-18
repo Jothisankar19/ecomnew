@@ -27,6 +27,7 @@ exports.createOrder = async (req, res) => {
       subtotal += price * item.quantity;
       orderItems.push({
         product: product._id,
+        category: product.category,
         name: product.name,
         image: product.images[0]?.url,
         price,
@@ -37,23 +38,57 @@ exports.createOrder = async (req, res) => {
       });
     }
 
-    // Apply coupon
+    // Apply Coupon / FlashVoucher
     let couponDiscount = 0;
     let couponData = null;
+    let isFlashVoucherApplied = false;
+    let flashVoucherInstance = null;
+
+    const FlashVoucher = require('../models/FlashVoucher');
+
     if (couponCode) {
+      // 1. Try to find in unified Coupon first
       const coupon = await Coupon.findOne({ code: couponCode.toUpperCase() });
       if (coupon) {
         const validity = coupon.isValid(subtotal, req.user._id);
         if (validity.valid) {
-          couponDiscount = coupon.calculateDiscount(subtotal);
+          couponDiscount = coupon.calculateDiscount(orderItems, subtotal);
           couponData = { code: coupon.code, discount: couponDiscount };
+          // If coupon has scheduling limits, we treat it as flat/flash delivery override
+          if (coupon.validUntil || coupon.expiresAt) {
+            isFlashVoucherApplied = true;
+          }
+        } else {
+          return res.status(400).json({ success: false, message: validity.message });
+        }
+      } else {
+        // 2. Safe legacy FlashVoucher check
+        const flashVoucher = await FlashVoucher.findOne({ code: couponCode.toUpperCase() });
+        if (flashVoucher) {
+          const validity = flashVoucher.isValid(req.user._id, subtotal);
+          if (validity.valid) {
+            couponDiscount = flashVoucher.calculateDiscount(orderItems, subtotal);
+            couponData = { code: flashVoucher.code, discount: couponDiscount };
+            isFlashVoucherApplied = true;
+            flashVoucherInstance = flashVoucher;
+          } else {
+            return res.status(400).json({ success: false, message: validity.message });
+          }
+        } else {
+          return res.status(404).json({ success: false, message: 'Invalid or expired coupon code.' });
         }
       }
     }
 
-    // Calculate shipping and tax
-    const shipping = subtotal > 999 ? 0 : 99;
-    const tax = Math.round((subtotal - couponDiscount) * 0.05); // 5% GST
+    // Calculate shipping and tax (Voucher billing formula)
+    let shipping = 99;
+    if (isFlashVoucherApplied) {
+      shipping = 65; // Requested Delivery = ₹65
+    } else if (subtotal > 999) {
+      shipping = 0;
+    }
+
+    const tax = Math.round((subtotal - couponDiscount) * 0.05); // GST 5%
     const total = subtotal - couponDiscount + shipping + tax;
 
     const order = await Order.create({
@@ -73,12 +108,19 @@ exports.createOrder = async (req, res) => {
       });
     }
 
-    // Mark coupon as used
+    // Mark coupon or flash voucher as used
     if (couponCode && couponData) {
-      await Coupon.findOneAndUpdate(
-        { code: couponCode.toUpperCase() },
-        { $inc: { usedCount: 1 }, $push: { usedBy: req.user._id } }
-      );
+      if (isFlashVoucherApplied && flashVoucherInstance) {
+        await FlashVoucher.findOneAndUpdate(
+          { code: couponCode.toUpperCase() },
+          { $inc: { stockClaimed: 1 }, $push: { usedBy: req.user._id } }
+        );
+      } else {
+        await Coupon.findOneAndUpdate(
+          { code: couponCode.toUpperCase() },
+          { $inc: { usedCount: 1 }, $push: { usedBy: req.user._id } }
+        );
+      }
     }
 
     // Clear cart

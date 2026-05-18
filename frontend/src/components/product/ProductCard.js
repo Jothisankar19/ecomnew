@@ -1,7 +1,7 @@
-import React, { useState } from 'react'
+import React, { useState, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { FiHeart, FiShoppingCart, FiUser } from 'react-icons/fi'
+import { FiHeart, FiShoppingCart, FiUser, FiChevronLeft, FiChevronRight } from 'react-icons/fi'
 import { useDispatch, useSelector } from 'react-redux'
 import { addToCart } from '../../store/slices/cartSlice'
 import { toggleWishlist, selectIsWishlisted } from '../../store/slices/wishlistSlice'
@@ -48,6 +48,51 @@ const ProductCard = ({ product, compact = false }) => {
   const [isHovered, setIsHovered] = useState(false)
   const { isAuthenticated } = useSelector((state) => state.auth)
   const isWishlisted = useSelector(selectIsWishlisted(product._id))
+  
+  const scrollRef = useRef(null)
+
+  const handleScroll = (e) => {
+    const container = e.currentTarget
+    const scrollLeft = container.scrollLeft
+    const width = container.clientWidth
+    if (width > 0) {
+      const index = Math.round(scrollLeft / width)
+      if (index !== imageIndex && index < images.length) {
+        setImageIndex(index)
+      }
+    }
+  }
+
+  const scrollToImage = (e, index) => {
+    e.preventDefault()
+    e.stopPropagation()
+    if (scrollRef.current) {
+      const width = scrollRef.current.clientWidth
+      scrollRef.current.scrollTo({
+        left: index * width,
+        behavior: 'smooth'
+      })
+      setImageIndex(index)
+    }
+  }
+
+  const scrollNext = (e) => {
+    e.preventDefault()
+    e.stopPropagation()
+    if (scrollRef.current) {
+      const nextIndex = Math.min(imageIndex + 1, images.length - 1)
+      scrollToImage(e, nextIndex)
+    }
+  }
+
+  const scrollPrev = (e) => {
+    e.preventDefault()
+    e.stopPropagation()
+    if (scrollRef.current) {
+      const prevIndex = Math.max(imageIndex - 1, 0)
+      scrollToImage(e, prevIndex)
+    }
+  }
 
   const handleAddToCart = (e) => {
     e.preventDefault()
@@ -102,18 +147,62 @@ const ProductCard = ({ product, compact = false }) => {
       whileHover={{ y: -4 }}
       transition={{ duration: 0.25 }}
       className="product-card"
-      onMouseEnter={() => { setIsHovered(true); if (images.length > 1) setImageIndex(1) }}
-      onMouseLeave={() => { setIsHovered(false); setImageIndex(0) }}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
     >
       <Link to={`/products/${product.slug || product._id}`}>
-        <div className="relative aspect-[2/3] md:aspect-[3/4] overflow-hidden bg-gray-50">
-          <motion.img
-            src={currentImage}
-            alt={product.name}
-            className="w-full h-full object-cover"
-            animate={{ scale: isHovered ? 1.06 : 1 }}
+        <div className="relative aspect-[2/3] md:aspect-[3/4] overflow-hidden bg-gray-50 group/image">
+          {/* Scrollable Carousel Images Container */}
+          <motion.div
+            ref={scrollRef}
+            onScroll={handleScroll}
+            className="absolute inset-0 flex overflow-x-auto snap-x snap-mandatory scrollbar-none scroll-smooth"
+            animate={{ scale: isHovered ? 1.04 : 1 }}
             transition={{ duration: 0.4 }}
-          />
+          >
+            {images.length > 0 ? (
+              images.map((img, i) => (
+                <div key={i} className="w-full h-full flex-shrink-0 snap-start snap-always">
+                  <img
+                    src={img.url}
+                    alt={`${product.name} - ${i + 1}`}
+                    className="w-full h-full object-cover"
+                    loading="lazy"
+                  />
+                </div>
+              ))
+            ) : (
+              <div className="w-full h-full flex-shrink-0 snap-start snap-always">
+                <img
+                  src="https://via.placeholder.com/400x500?text=Kurti"
+                  alt={product.name}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+            )}
+          </motion.div>
+
+          {/* Navigation Arrows */}
+          {images.length > 1 && (
+            <>
+              {/* Left Arrow */}
+              <button
+                onClick={scrollPrev}
+                disabled={imageIndex === 0}
+                className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white/90 backdrop-blur-sm border border-gray-150 flex items-center justify-center text-gray-700 shadow-md hover:bg-white hover:text-yellow-600 transition-all z-20 focus:outline-none disabled:opacity-0 disabled:pointer-events-none md:flex hidden opacity-0 group-hover/image:opacity-100"
+              >
+                <FiChevronLeft size={16} />
+              </button>
+              {/* Right Arrow */}
+              <button
+                onClick={scrollNext}
+                disabled={imageIndex === images.length - 1}
+                className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white/90 backdrop-blur-sm border border-gray-150 flex items-center justify-center text-gray-700 shadow-md hover:bg-white hover:text-yellow-600 transition-all z-20 focus:outline-none disabled:opacity-0 disabled:pointer-events-none md:flex hidden opacity-0 group-hover/image:opacity-100"
+              >
+                <FiChevronRight size={16} />
+              </button>
+            </>
+          )}
 
           {/* Badges */}
           <div className="absolute top-3 left-3 flex flex-col gap-1">
@@ -169,9 +258,16 @@ const ProductCard = ({ product, compact = false }) => {
 
           {/* Image dots */}
           {images.length > 1 && (
-            <div className="absolute bottom-12 left-0 right-0 flex justify-center gap-1">
-              {images.slice(0, 4).map((_, i) => (
-                <div key={i} className={`w-1.5 h-1.5 rounded-full transition-all ${i === imageIndex ? 'bg-yellow-500' : 'bg-white/70'}`} />
+            <div className="absolute bottom-12 left-0 right-0 flex justify-center gap-1.5 z-20">
+              {images.slice(0, 5).map((_, i) => (
+                <button
+                  key={i}
+                  onClick={(e) => scrollToImage(e, i)}
+                  className={`w-1.5 h-1.5 rounded-full transition-all hover:scale-125 focus:outline-none ${
+                    i === imageIndex ? 'bg-yellow-500 w-2.5' : 'bg-white/75 hover:bg-white'
+                  }`}
+                  aria-label={`Go to slide ${i + 1}`}
+                />
               ))}
             </div>
           )}

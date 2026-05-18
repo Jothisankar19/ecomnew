@@ -73,6 +73,7 @@ app.use('/api/reviews', require('./routes/reviewRoutes'));
 app.use('/api/cart', require('./routes/cartRoutes'));
 app.use('/api/wishlist', require('./routes/wishlistRoutes'));
 app.use('/api/coupons', require('./routes/couponRoutes'));
+app.use('/api/flash-sales', require('./routes/flashVoucherRoutes'));
 app.use('/api/admin', require('./routes/adminRoutes'));
 app.use('/api/upload', require('./routes/uploadRoutes'));
 
@@ -110,22 +111,11 @@ app.use('*', (req, res) => {
   res.status(404).json({ success: false, message: 'Route not found' });
 });
 
-// Connect to MongoDB with fallback
+// Database Connection & Server Startup
 const connectDB = async () => {
-  const uri = process.env.MONGO_URI;
-
-  if (!uri || uri.includes('your_') || uri.includes('<')) {
-    console.error('❌ MONGO_URI is not set in .env file');
-    process.exit(1);
-  }
-
   try {
-    await mongoose.connect(uri, {
-      serverSelectionTimeoutMS: 15000,
-      socketTimeoutMS: 45000,
-      connectTimeoutMS: 15000,
-    });
-    console.log('✅ MongoDB Connected:', mongoose.connection.host);
+    const conn = await mongoose.connect(process.env.MONGO_URI);
+    console.log(`✅ MongoDB Connected: ${conn.connection.host}`);
   } catch (err) {
     console.error('❌ MongoDB connection error:', err.message);
     console.error('');
@@ -139,12 +129,15 @@ const connectDB = async () => {
   }
 };
 
+const { initCronJobs } = require('./utils/cronJobs');
+
 connectDB().then(() => {
   const PORT = process.env.PORT || 5000;
   app.listen(PORT, () => {
     console.log(`🚀 Server running on port ${PORT}`);
     console.log(`📱 API: http://localhost:${PORT}/api`);
     console.log(`🔑 Admin: http://localhost:3000/admin/login`);
+    initCronJobs();
   });
 });
 
