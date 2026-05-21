@@ -4,6 +4,7 @@ import { Provider } from 'react-redux'
 import { PersistGate } from 'redux-persist/integration/react'
 import { HelmetProvider } from 'react-helmet-async'
 import { Toaster } from 'react-hot-toast'
+import { SaleProvider } from './context/SaleContext'
 import { store, persistor } from './store'
 import App from './App'
 import './index.css'
@@ -13,7 +14,8 @@ ReactDOM.createRoot(document.getElementById('root')).render(
     <Provider store={store}>
       <PersistGate loading={null} persistor={persistor}>
         <HelmetProvider>
-          <App />
+          <SaleProvider>
+            <App />
           <Toaster
             position="top-right"
             toastOptions={{
@@ -34,6 +36,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
               },
             }}
           />
+          </SaleProvider>
         </HelmetProvider>
       </PersistGate>
     </Provider>

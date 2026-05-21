@@ -76,6 +76,8 @@ app.use('/api/coupons', require('./routes/couponRoutes'));
 app.use('/api/flash-sales', require('./routes/flashVoucherRoutes'));
 app.use('/api/admin', require('./routes/adminRoutes'));
 app.use('/api/upload', require('./routes/uploadRoutes'));
+app.use('/api/settings', require('./routes/settingsRoutes'));
+app.use('/api/hero-slides', require('./routes/heroSlideRoutes'));
 
 // Health check
 app.get('/api/health', (req, res) => {

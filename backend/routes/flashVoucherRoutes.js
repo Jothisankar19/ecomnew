@@ -91,6 +91,94 @@ router.post('/', protect, adminOnly, async (req, res) => {
   }
 });
 
+// @desc    Get product-level sale offers from all active campaigns
+// @route   GET /api/flash-sales/product-offers
+router.get('/product-offers', async (req, res) => {
+  try {
+    const cached = await cache.get('product_sale_offers');
+    if (cached) {
+      return res.status(200).json({ success: true, offers: cached });
+    }
+
+    const now = new Date();
+    const Coupon = require('../models/Coupon');
+
+    // Fetch all active flash vouchers
+    const flashVouchers = await FlashVoucher.find({
+      status: 'active',
+      startTime: { $lte: now },
+      endTime: { $gte: now }
+    }).populate('applicableProducts', '_id price discountPrice')
+      .populate('applicableCategories', '_id');
+
+    // Fetch all active coupons
+    const coupons = await Coupon.find({
+      isActive: true,
+      $or: [
+        { validUntil: null },
+        { validUntil: { $gte: now } },
+        { expiresAt: { $gte: now } }
+      ]
+    }).populate('applicableProducts', '_id price discountPrice')
+      .populate('applicableCategories', '_id');
+
+    // Build product -> best offer map
+    const offerMap = {};
+
+    const processCampaign = (campaign, type) => {
+      const { discountType, discountValue, code, description } = campaign;
+      const endTime = campaign.endTime || campaign.validUntil || campaign.expiresAt;
+      const products = campaign.applicableProducts || [];
+      const categories = campaign.applicableCategories || [];
+
+      // Only map product-specific campaigns (not store-wide ones)
+      if (products.length === 0 && categories.length === 0) return;
+
+      products.forEach(product => {
+        if (!product || !product._id) return;
+        const pid = product._id.toString();
+        const basePrice = product.discountPrice || product.price || 0;
+
+        let offerDiscount = 0;
+        if (discountType === 'percentage') {
+          offerDiscount = Math.round(discountValue);
+        } else if (basePrice > 0) {
+          offerDiscount = Math.round((discountValue / basePrice) * 100);
+        }
+
+        let offerPrice = basePrice;
+        if (discountType === 'percentage') {
+          offerPrice = Math.round(basePrice - (basePrice * discountValue / 100));
+        } else {
+          offerPrice = Math.round(basePrice - discountValue);
+        }
+        offerPrice = Math.max(0, offerPrice);
+
+        // Keep the best (highest) discount for each product
+        if (!offerMap[pid] || offerDiscount > offerMap[pid].discountPercent) {
+          offerMap[pid] = {
+            discountPercent: offerDiscount,
+            offerPrice,
+            originalPrice: basePrice,
+            code,
+            campaignType: type,
+            description: description || '',
+            endTime
+          };
+        }
+      });
+    };
+
+    flashVouchers.forEach(v => processCampaign(v, 'flash'));
+    coupons.forEach(c => processCampaign(c, 'coupon'));
+
+    await cache.set('product_sale_offers', offerMap, 120); // cache 2 minutes
+    res.status(200).json({ success: true, offers: offerMap });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
 // @desc    Get all active flash sale campaigns
 // @route   GET /api/flash-sales/active
 router.get('/active', async (req, res) => {
@@ -156,8 +244,16 @@ router.post('/validate', protect, async (req, res) => {
       discount = targetVoucher.calculateDiscount(cartItems || [], cartAmount);
     }
 
+    if (discount === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'This coupon is not applicable for this product category'
+      });
+    }
+
     res.status(200).json({ 
       success: true, 
+      message: 'Coupon applied successfully',
       voucher: {
         code: targetVoucher.code,
         description: targetVoucher.description || '',

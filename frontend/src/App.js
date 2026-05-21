@@ -27,6 +27,7 @@ const ResetPasswordPage = lazy(() => import('./pages/ResetPasswordPage'));
 const VerifyOTPPage     = lazy(() => import('./pages/VerifyOTPPage'));
 const CategoryPage      = lazy(() => import('./pages/CategoryPage'));
 const SearchPage        = lazy(() => import('./pages/SearchPage'));
+const CategoriesPage    = lazy(() => import('./pages/CategoriesPage'));
 const FlashSalesPage    = lazy(() => import('./pages/FlashSalesPage'));
 const AboutPage         = lazy(() => import('./pages/AboutPage'));
 const NotFoundPage      = lazy(() => import('./pages/NotFoundPage'));
@@ -38,6 +39,7 @@ const AdminProducts   = lazy(() => import('./pages/admin/AdminProducts'));
 const AdminOrders     = lazy(() => import('./pages/admin/AdminOrders'));
 const AdminUsers      = lazy(() => import('./pages/admin/AdminUsers'));
 const AdminCategories = lazy(() => import('./pages/admin/AdminCategories'));
+const AdminBanners    = lazy(() => import('./pages/admin/AdminBanners'));
 const AdminCoupons    = lazy(() => import('./pages/admin/AdminCoupons'));
 const AdminInventory  = lazy(() => import('./pages/admin/AdminInventory'));
 const AdminSettings   = lazy(() => import('./pages/admin/AdminSettings'));
@@ -73,6 +75,8 @@ function App() {
             <Route index element={<HomePage />} />
             <Route path="products" element={<ProductsPage />} />
             <Route path="products/:id" element={<ProductDetailPage />} />
+            <Route path="categories" element={<CategoriesPage />} />
+            <Route path="category" element={<Navigate to="/categories" replace />} />
             <Route path="category/:slug" element={<CategoryPage />} />
             <Route path="search" element={<SearchPage />} />
             <Route path="flash-sales" element={<FlashSalesPage />} />
@@ -103,6 +107,7 @@ function App() {
             <Route path="orders" element={<AdminOrders />} />
             <Route path="users" element={<AdminUsers />} />
             <Route path="categories" element={<AdminCategories />} />
+            <Route path="banners" element={<AdminBanners />} />
             <Route path="coupons" element={<AdminCoupons />} />
             <Route path="inventory" element={<AdminInventory />} />
             <Route path="settings" element={<AdminSettings />} />

@@ -19,9 +19,27 @@ const CartPage = () => {
   const savedItems = useSelector(selectSavedItems)
   const subtotal = useSelector(selectCartSubtotal)
   const { coupon } = useSelector((state) => state.cart)
-  const { isAuthenticated } = useSelector((state) => state.auth)
+  const { isAuthenticated, user } = useSelector((state) => state.auth)
   const [couponCode, setCouponCode] = useState('')
   const [couponLoading, setCouponLoading] = useState(false)
+  const [settings, setSettings] = useState({
+    freeDeliveryThreshold: 1000,
+    freeDeliveryLocations: ['Chennai', 'Mumbai', 'Delhi', 'Kolkata', 'Bengaluru']
+  });
+
+  useEffect(() => {
+    const fetchSettings = async () => {
+      try {
+        const { data } = await api.get('/settings');
+        if (data.success && data.settings) {
+          setSettings(data.settings);
+        }
+      } catch (err) {
+        console.warn('Could not fetch shipping settings', err);
+      }
+    };
+    fetchSettings();
+  }, []);
 
   // Re-fetch cart on mount to get latest product prices
   useEffect(() => {
@@ -30,9 +48,15 @@ const CartPage = () => {
     }
   }, [dispatch, isAuthenticated])
 
-  const shipping = subtotal > 999 ? 0 : 99
+  const defaultAddress = user?.addresses?.find(a => a.isDefault) || user?.addresses?.[0] || {};
+  const normalizedCity = (defaultAddress.city || '').trim().toLowerCase();
+  const isEligibleLocation = settings.freeDeliveryLocations.some(
+    loc => loc.trim().toLowerCase() === normalizedCity
+  );
+
+  const shipping = (isEligibleLocation && subtotal >= settings.freeDeliveryThreshold) ? 0 : 99;
   const couponDiscount = coupon?.discount || 0
-  const tax = Math.round((subtotal - couponDiscount) * 0.05)
+  const tax = Math.round(subtotal * 0.05)
   const total = subtotal - couponDiscount + shipping + tax
 
   const handleApplyCoupon = async () => {
@@ -93,7 +117,7 @@ const CartPage = () => {
                   layout 
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
-                  className="bg-white rounded-3xl border border-gray-100 shadow-sm p-5 md:p-6 flex flex-col sm:flex-row gap-6 relative group"
+                  className="bg-white rounded-3xl border border-gray-100 shadow-sm p-5 md:p-6 flex flex-col sm:flex-row gap-6 relative group hover:-translate-y-1 hover:shadow-xl hover:shadow-yellow-100/30 hover:border-yellow-200/50 transition-all duration-300"
                 >
                   {/* Remove Button (Corner) */}
                   <button 
@@ -107,11 +131,13 @@ const CartPage = () => {
                   {/* Image */}
                   <Link 
                     to={`/products/${item.product?.slug || item.product?._id}`}
-                    className="w-full sm:w-32 h-44 sm:h-40 rounded-2xl overflow-hidden flex-shrink-0 bg-gray-50"
+                    className="w-full sm:w-32 h-44 sm:h-40 rounded-2xl overflow-hidden flex-shrink-0 bg-gray-50 border border-gray-100 shadow-inner"
                   >
                     <img 
                       src={item.product?.images?.[0]?.url || 'https://via.placeholder.com/300x400?text=Product'}
                       alt={item.product?.name} 
+                      loading="lazy"
+                      decoding="async"
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
                     />
                   </Link>
@@ -278,7 +304,7 @@ const CartPage = () => {
                   </div>
                 </div>
 
-                {subtotal < 999 ? (
+                {subtotal < settings.freeDeliveryThreshold ? (
                   <motion.div 
                     initial={{ scale: 0.95, opacity: 0 }}
                     animate={{ scale: 1, opacity: 1 }}
@@ -291,19 +317,19 @@ const CartPage = () => {
                     <div className="w-full h-2.5 bg-white rounded-full overflow-hidden border border-yellow-100 shadow-inner">
                       <motion.div 
                         initial={{ width: 0 }}
-                        animate={{ width: `${(subtotal / 999) * 100}%` }}
+                        animate={{ width: `${Math.min(100, (subtotal / settings.freeDeliveryThreshold) * 100)}%` }}
                         transition={{ duration: 1.5, ease: "easeOut" }}
                         className="h-full bg-yellow-500 rounded-full" 
                       />
                     </div>
                     <p className="text-gray-900 text-sm font-bold">
-                      Add <span className="text-yellow-600">{formatPrice(999 - subtotal)}</span> more for <span className="text-green-600">FREE DELIVERY</span>!
+                      Add <span className="text-yellow-600">{formatPrice(settings.freeDeliveryThreshold - subtotal)}</span> more for <span className="text-green-600">FREE DELIVERY</span> (select locations)!
                     </p>
                     <Link to="/products" className="text-yellow-600 text-xs font-bold hover:underline mt-1">
                       Browse more products
                     </Link>
                   </motion.div>
-                ) : (
+                ) : isEligibleLocation ? (
                   <motion.div 
                     initial={{ scale: 0.95, opacity: 0 }}
                     animate={{ scale: 1, opacity: 1 }}
@@ -315,6 +341,20 @@ const CartPage = () => {
                     <div>
                       <p className="text-green-800 font-bold">You qualify for FREE Delivery!</p>
                       <p className="text-green-600 text-xs font-medium">Standard shipping fee has been waived.</p>
+                    </div>
+                  </motion.div>
+                ) : (
+                  <motion.div 
+                    initial={{ scale: 0.95, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    className="mb-6 bg-yellow-50 rounded-3xl p-6 border border-yellow-100 flex items-center gap-4"
+                  >
+                    <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center text-yellow-600 shadow-sm">
+                       <FiTruck size={24} />
+                    </div>
+                    <div>
+                      <p className="text-yellow-800 font-bold">Free Delivery Available</p>
+                      <p className="text-gray-500 text-xs font-medium">Free shipping is eligible above {formatPrice(settings.freeDeliveryThreshold)} for select cities.</p>
                     </div>
                   </motion.div>
                 )}

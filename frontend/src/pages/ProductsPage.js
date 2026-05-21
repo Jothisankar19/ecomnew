@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useRef } from 'react'
 import { useSearchParams, Link } from 'react-router-dom'
 import { useDispatch, useSelector } from 'react-redux'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -8,7 +8,6 @@ import { fetchProducts, setFilters } from '../store/slices/productSlice'
 import ProductCard from '../components/product/ProductCard'
 import { SkeletonGrid } from '../components/ui/SkeletonCard'
 import api from '../utils/api'
-
 /* ── Filter data ─────────────────────────────────────────────── */
 const COLORS = [
   { name: 'Blue', hex: '#3b82f6' }, { name: 'Green', hex: '#22c55e' },
@@ -258,12 +257,12 @@ const FilterSidebar = ({ localFilters, setLocalFilters, onApply, onClear, catego
           </div>
         </FilterSection>
 
-        {/* Apply Button */}
+        {/* Apply Button (mobile only) */}
         <button
           onClick={onApply}
-          className="w-full bg-yellow-500 hover:bg-yellow-400 text-white font-bold text-sm py-3 rounded-xl transition-colors mt-2"
+          className="w-full bg-yellow-500 hover:bg-yellow-400 text-white font-bold text-sm py-3 rounded-xl transition-colors mt-2 lg:hidden"
         >
-          Apply Filters
+          View Results
         </button>
       </div>
     </div>
@@ -282,6 +281,9 @@ const ProductsPage = () => {
   const [sort, setSort] = useState('newest')
   const [viewMode, setViewMode] = useState('grid') // grid | list
 
+  // Read URL params once on mount
+  const urlCategoryId = searchParams.get('category') || ''
+
   // Local filter state (applied on button click)
   const [localFilters, setLocalFilters] = useState({
     colors: [], categoryNames: [], fabrics: [], fits: [],
@@ -289,8 +291,28 @@ const ProductsPage = () => {
     minPrice: '', maxPrice: '',
   })
 
-  // Read URL params once on mount
-  const urlCategoryId = searchParams.get('category') || ''
+  // Auto-apply filters when selection changes
+  const debounceRef = useRef(null)
+  useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+    debounceRef.current = setTimeout(() => {
+      const newFilters = {}
+      if (urlCategoryId) newFilters.category = urlCategoryId
+      if (localFilters.minPrice) newFilters.minPrice = localFilters.minPrice
+      if (localFilters.maxPrice) newFilters.maxPrice = localFilters.maxPrice
+      if (localFilters.sizes.length) newFilters.size = localFilters.sizes[0]
+      if (localFilters.colors.length) newFilters.color = localFilters.colors[0]
+      dispatch(setFilters(newFilters))
+      setPage(1)
+    }, 300)
+    return () => clearTimeout(debounceRef.current)
+  }, [localFilters, urlCategoryId, dispatch])
+
+  // Existing handleApplyFilters remains for mobile drawer
+  const handleApplyFilters = () => {
+    // For mobile drawer, close after applying (filters already applied via auto effect)
+    setMobileFilterOpen(false)
+  }
 
   // Sync URL params to Redux filters dynamically whenever query parameters change
   useEffect(() => {
@@ -328,18 +350,7 @@ const ProductsPage = () => {
     })
   }, [])
 
-  const handleApplyFilters = () => {
-    const newFilters = {}
-    // Always preserve the URL category (flash sale category)
-    if (urlCategoryId) newFilters.category = urlCategoryId
-    if (localFilters.minPrice) newFilters.minPrice = localFilters.minPrice
-    if (localFilters.maxPrice) newFilters.maxPrice = localFilters.maxPrice
-    if (localFilters.sizes.length) newFilters.size = localFilters.sizes[0]
-    if (localFilters.colors.length) newFilters.color = localFilters.colors[0]
-    dispatch(setFilters(newFilters))
-    setPage(1)
-    setMobileFilterOpen(false)
-  }
+
 
   const handleClearFilters = () => {
     setLocalFilters({ colors: [], categoryNames: [], fabrics: [], fits: [], patterns: [], sizes: [], sleeves: [], necks: [], minPrice: '', maxPrice: '' })

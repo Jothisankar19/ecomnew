@@ -38,41 +38,54 @@ const CheckoutPage = () => {
     country: 'India',
   });
   const [paymentMethod, setPaymentMethod] = useState('razorpay');
+  const [agreeToTerms, setAgreeToTerms] = useState(false);
 
   // Coupon / Flash Voucher States
   const [voucherCodeInput, setVoucherCodeInput] = useState('');
   const [activeVoucher, setActiveVoucher] = useState(null);
   const [voucherDiscount, setVoucherDiscount] = useState(0);
-  const [bestOffers, setBestOffers] = useState([]);
   const [validating, setValidating] = useState(false);
+  const [settings, setSettings] = useState({
+    freeDeliveryThreshold: 1000,
+    freeDeliveryLocations: ['Chennai', 'Mumbai', 'Delhi', 'Kolkata', 'Bengaluru']
+  });
 
-  // Load best offers on page mount
   useEffect(() => {
-    const fetchBestOffers = async () => {
+    const fetchSettings = async () => {
       try {
-        const { data } = await api.post('/flash-sales/best', {
-          cartAmount: subtotal,
-          cartItems: items.map(i => ({
-            product: i.product._id,
-            category: i.product.category?._id || i.product.category,
-            price: i.product.discountPrice || i.product.price,
-            quantity: i.quantity
-          }))
-        });
-        setBestOffers(data.recommendations || []);
+        const { data } = await api.get('/settings');
+        if (data.success && data.settings) {
+          setSettings(data.settings);
+        }
       } catch (err) {
-        console.warn('Could not fetch voucher suggestions', err);
+        console.warn('Could not fetch shipping settings', err);
       }
     };
-    if (subtotal > 0) {
-      fetchBestOffers();
-    }
-  }, [subtotal, items]);
+    fetchSettings();
+  }, []);
+
+
 
   // Dynamic Billing Calculation Formulas
   const isFlashApplied = activeVoucher !== null;
-  const shipping = isFlashApplied ? 65 : (subtotal > 999 ? 0 : 99); // Delivery: ₹65 during flash sale
-  const tax = Math.round((subtotal - voucherDiscount) * 0.05); // GST: 5% on discounted amount
+  
+  // Calculate delivery charge dynamically
+  let calculatedShipping = 99;
+  if (isFlashApplied) {
+    calculatedShipping = 65;
+  }
+  
+  const normalizedCity = (address.city || '').trim().toLowerCase();
+  const isEligibleLocation = settings.freeDeliveryLocations.some(
+    loc => loc.trim().toLowerCase() === normalizedCity
+  );
+  
+  if (isEligibleLocation && subtotal >= settings.freeDeliveryThreshold) {
+    calculatedShipping = 0;
+  }
+
+  const shipping = calculatedShipping;
+  const tax = Math.round(subtotal * 0.05); // GST: 5% on original subtotal (not reduced by voucher discount)
   const total = subtotal - voucherDiscount + shipping + tax;
 
   const handleApplyVoucher = async (codeToApply) => {
@@ -95,7 +108,7 @@ const CheckoutPage = () => {
       setActiveVoucher(data.voucher);
       setVoucherDiscount(data.discount);
       setVoucherCodeInput('');
-      toast.success(`Voucher ${data.voucher.code} applied! Saved ₹${data.discount}`);
+      toast.success('Coupon applied successfully');
     } catch (err) {
       toast.error(err.response?.data?.message || 'Invalid or expired voucher code');
     }
@@ -119,6 +132,10 @@ const CheckoutPage = () => {
   };
 
   const handlePlaceOrder = async () => {
+    if (!agreeToTerms) {
+      toast.error('Please agree to the Terms of Service and Privacy Policy to place your order.');
+      return;
+    }
     setLoading(true);
     try {
       const orderData = {
@@ -274,7 +291,6 @@ const CheckoutPage = () => {
                         </div>
                       </div>
                     )}
-
                     <form onSubmit={handleAddressSubmit} className="space-y-6">
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="space-y-2">
@@ -292,7 +308,6 @@ const CheckoutPage = () => {
                           </div>
                         </div>
                       </div>
-
                       <div className="space-y-2">
                         <label className="text-xs font-bold text-gray-400 uppercase ml-1">Street Address</label>
                         <input placeholder="House No, Building, Street" value={address.addressLine1} onChange={e => setAddress({...address, addressLine1: e.target.value})} className="w-full px-4 py-3.5 bg-gray-50 border border-gray-100 rounded-2xl focus:outline-none focus:border-yellow-500 focus:bg-white transition-all" required />
@@ -342,12 +357,12 @@ const CheckoutPage = () => {
 
                       <div className="space-y-6">
                         {items.map((item) => (
-                          <div key={item._id} className="flex gap-5 group">
-                            <div className="w-20 h-28 rounded-2xl overflow-hidden flex-shrink-0 bg-gray-50">
-                              <img src={item.product?.images?.[0]?.url} alt="" className="w-full h-full object-cover transition-transform group-hover:scale-105" />
+                          <div key={item._id} className="flex gap-5 group items-center bg-gray-50/50 p-3 rounded-2xl border border-gray-50 hover:border-yellow-200/50 hover:bg-white hover:shadow-sm hover:shadow-yellow-100/10 transition-all duration-300">
+                            <div className="w-20 h-24 rounded-xl overflow-hidden flex-shrink-0 bg-gray-100 border border-gray-100 shadow-inner">
+                              <img src={item.product?.images?.[0]?.url} alt="" loading="lazy" decoding="async" className="w-full h-full object-cover transition-transform group-hover:scale-105" />
                             </div>
                             <div className="flex-1">
-                              <h4 className="text-gray-900 font-bold text-lg mb-1">{item.product?.name}</h4>
+                              <h4 className="text-gray-900 font-bold text-base mb-1">{item.product?.name}</h4>
                               <p className="text-gray-400 text-sm mb-2">
                                 {item.size && `Size: ${item.size}`} {item.color && ` • Color: ${item.color}`}
                               </p>
@@ -431,12 +446,20 @@ const CheckoutPage = () => {
                       ))}
                     </div>
 
-                    <div className="bg-gray-50 rounded-2xl p-5 mb-8 flex items-start gap-3">
-                       <FiInfo className="text-yellow-600 flex-shrink-0 mt-0.5" size={18} />
-                       <p className="text-gray-500 text-xs leading-relaxed">
-                         By placing this order, you agree to Ethnic Elegance's Terms of Service and Privacy Policy. All transactions are secure and encrypted.
-                       </p>
-                    </div>
+                    <label className="flex items-start gap-3 bg-gray-50 hover:bg-gray-100/50 rounded-2xl p-5 mb-8 cursor-pointer transition-colors border border-gray-100">
+                      <input
+                        type="checkbox"
+                        checked={agreeToTerms}
+                        onChange={(e) => setAgreeToTerms(e.target.checked)}
+                        className="mt-0.5 h-4.5 w-4.5 rounded border-gray-300 text-yellow-600 focus:ring-yellow-500 cursor-pointer accent-yellow-500"
+                      />
+                      <span className="text-gray-500 text-xs leading-relaxed select-none">
+                        I agree to Ethnic Elegance's{' '}
+                        <a href="/terms" target="_blank" rel="noopener noreferrer" className="text-yellow-600 hover:underline font-bold" onClick={(e) => e.stopPropagation()}>Terms of Service</a>{' '}
+                        and{' '}
+                        <a href="/privacy" target="_blank" rel="noopener noreferrer" className="text-yellow-600 hover:underline font-bold" onClick={(e) => e.stopPropagation()}>Privacy Policy</a>. I understand that all transactions are secure and encrypted. <span className="text-red-500 font-bold">*</span>
+                      </span>
+                    </label>
 
                     <div className="flex gap-4">
                       <button onClick={() => setStep(1)} className="h-14 px-8 border border-gray-200 rounded-2xl text-gray-500 font-bold hover:bg-gray-50 transition-all flex items-center gap-2">
@@ -496,31 +519,10 @@ const CheckoutPage = () => {
                           {validating ? 'Applying...' : 'Apply'}
                         </button>
                       </div>
-
-                      {/* Best Offers Recommendation Pills */}
-                      {bestOffers.length > 0 && (
-                        <div className="space-y-1.5">
-                          <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">Recommended Offers</span>
-                          <div className="flex flex-wrap gap-2">
-                            {bestOffers.map((offer) => (
-                              <button
-                                key={offer.code}
-                                onClick={() => handleApplyVoucher(offer.code)}
-                                className={`text-[10px] font-black uppercase tracking-wider px-2.5 py-1.5 rounded-lg border transition-all ${
-                                  offer.isFestivalPromo ? 'bg-pink-50 border-pink-100 text-pink-600 hover:bg-pink-100' : 'bg-yellow-50 border-yellow-100 text-yellow-600 hover:bg-yellow-100'
-                                }`}
-                              >
-                                {offer.code} (Save {formatPrice(offer.estimatedSavings)})
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-                      )}
                     </div>
                   )}
                 </div>
 
-                {/* DYNAMIC PRICE BREAKDOWN */}
                 <div className="space-y-4 mb-8">
                   <div className="flex justify-between text-gray-500 font-medium">
                     <span>Order Subtotal</span>

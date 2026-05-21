@@ -21,6 +21,7 @@ import img3 from '../assets/091A7713.webp'
 import img4 from '../assets/NIJU9620.webp'
 import img5 from '../assets/NIJU9633.webp'
 import sizeGuideImg from '../assets/kurti_size_guide_diagram.png'
+import sampleVideo from '../assets/sample/55d32136729648abb050b07719f6cc61.HD-720p-2.1Mbps-81321222.mp4'
 
 /* ─── Helpers ────────────────────────────────────────────────── */
 const SectionTitle = ({ tag, title, description, center = true }) => {
@@ -82,11 +83,12 @@ const FeaturesBar = () => {
 }
 
 /* ─── Dynamic Widescreen Promotional Sale Banner matching Countdown Screenshot ─── */
-const SaleBanner = ({ activeCampaign, currentSlide, setCurrentSlide, totalSlides }) => {
+const SaleBanner = ({ activeCampaign, currentSlide, setCurrentSlide, totalSlides, loading }) => {
 
   const [timeLeft, setTimeLeft] = useState(null);
 
   useEffect(() => {
+    if (loading) return;
     const calculateTime = () => {
       let expiry;
       if (activeCampaign) {
@@ -118,7 +120,45 @@ const SaleBanner = ({ activeCampaign, currentSlide, setCurrentSlide, totalSlides
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [activeCampaign]);
+  }, [activeCampaign, loading]);
+
+  if (loading) {
+    return (
+      <section className="py-10 bg-transparent">
+        <div className="page-container flex justify-center">
+          <div
+            className="relative overflow-hidden rounded-[2.5rem] shadow-2xl w-full min-h-[450px] md:min-h-[400px] flex items-center p-6 sm:p-12 md:p-16"
+            style={{ backgroundColor: '#16110c' }}
+          >
+            {/* Widescreen dark luxury gradient skeleton backdrop */}
+            <div className="absolute inset-0 bg-gradient-to-r from-yellow-950/10 via-black/50 to-yellow-950/10 animate-pulse" />
+            <div className="absolute inset-0 bg-gradient-to-tr from-[#1a130d] via-black/80 to-transparent" />
+            
+            <div className="relative z-10 w-full max-w-xl text-left flex flex-col items-start space-y-6">
+              {/* Badge Shimmer */}
+              <div className="h-6 w-36 rounded-full bg-white/5 animate-pulse border border-white/5" />
+              
+              {/* Title Shimmer */}
+              <div className="space-y-2">
+                <div className="h-10 w-48 rounded-xl bg-white/5 animate-pulse" />
+                <div className="h-12 w-64 rounded-xl bg-white/5 animate-pulse" />
+              </div>
+              
+              {/* Chronometer Grid Shimmer */}
+              <div className="flex items-center gap-2">
+                {[1, 2, 3, 4].map((i) => (
+                  <div key={i} className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl bg-white/5 animate-pulse border border-white/5" />
+                ))}
+              </div>
+              
+              {/* CTA Pill Shimmer */}
+              <div className="h-11 w-44 rounded-full bg-white/5 animate-pulse" />
+            </div>
+          </div>
+        </div>
+      </section>
+    );
+  }
 
   // Determine dynamic variables
   let badgeText = "FLASH SALE ACTIVE";
@@ -320,6 +360,8 @@ const ShopByType = ({ categories }) => {
                   <img
                     src={type.img}
                     alt={type.name}
+                    loading="lazy"
+                    decoding="async"
                     className="w-full h-full object-cover object-top group-hover:scale-105 transition-transform duration-700"
                   />
                   {/* Premium Vignette Overlay */}
@@ -383,6 +425,8 @@ const ShopByAge = () => {
                 <img
                   src={group.img}
                   alt={group.name}
+                  loading="lazy"
+                  decoding="async"
                   className="w-full h-72 object-cover object-top group-hover:scale-105 transition-transform duration-600"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
@@ -615,21 +659,21 @@ const PromoBanners = () => (
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {[
           {
-            img: 'https://images.unsplash.com/photo-1608976478512-ef30825cd41c?w=800&q=80',
+            img: img1,
             tag: 'New Arrivals', tagColor: 'text-yellow-400 border-yellow-500/30 bg-yellow-500/5',
             title: 'Anarkali\nKurtis', cta: 'Shop Now',
             ctaColor: 'bg-gradient-to-r from-yellow-500 to-yellow-600 hover:from-yellow-400 hover:to-yellow-500 shadow-yellow-500/20',
             link: '/category/anarkali-kurtis',
           },
           {
-            img: 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=800&q=80',
+            img: img5,
             tag: 'Limited Time', tagColor: 'text-pink-400 border-pink-500/30 bg-pink-500/5',
             title: 'Flat 50% OFF\nPrinted Kurtis', cta: 'Grab Deal',
             ctaColor: 'bg-gradient-to-r from-pink-500 to-pink-600 hover:from-pink-400 hover:to-pink-500 shadow-pink-500/20',
             link: '/category/printed-kurtis',
           },
           {
-            img: 'https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?w=800&q=80',
+            img: img3,
             tag: 'Festival Special', tagColor: 'text-purple-400 border-purple-500/30 bg-purple-500/5',
             title: 'Embroidered\nKurtis', cta: 'Explore',
             ctaColor: 'bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-400 hover:to-purple-500 shadow-purple-500/20',
@@ -646,6 +690,8 @@ const PromoBanners = () => (
             <img 
               src={b.img} 
               alt={b.title} 
+              loading="lazy"
+              decoding="async"
               className="w-full h-full object-cover object-top group-hover:scale-105 transition-transform duration-[1.2s] ease-out" 
             />
             {/* Rich Luxury Vignette: Heavy on left to make text pop, light on right to showcase garments */}
@@ -719,76 +765,53 @@ const TestimonialsSection = () => {
 
 /* ─── Video Section ─────────────────────────────────────────────── */
 const VideoSection = () => {
-  const [isPlaying, setIsPlaying] = useState(false);
-
   return (
-    <section className="relative w-full h-[500px] md:h-[700px] bg-black overflow-hidden flex items-center justify-center">
-      {/* Background Image / Video Poster */}
-      <div 
-        className={`absolute inset-0 transition-opacity duration-1000 ${isPlaying ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}
-      >
-        <img 
-          src="https://images.unsplash.com/photo-1544441893-675973e31985?w=1600&q=80" 
-          alt="Sewing Craft" 
-          className="w-full h-full object-cover opacity-70"
-        />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-black/20" />
+    <section className="py-16 bg-gradient-to-b from-gray-50 to-white">
+      <div className="page-container flex flex-col items-center">
+        <motion.div 
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.6 }}
+          className="w-full max-w-6xl bg-white rounded-[2rem] shadow-[0_20px_50px_-12px_rgba(0,0,0,0.1)] overflow-hidden border border-gray-100 flex flex-col md:flex-row"
+        >
+          {/* Left Side: Video Container */}
+          <div className="relative w-full md:w-1/2 lg:w-3/5 bg-black flex-shrink-0">
+            <video 
+              className="w-full h-full object-cover aspect-video md:aspect-auto md:absolute md:inset-0"
+              src={sampleVideo}
+              autoPlay
+              loop
+              muted
+              playsInline
+              controls
+            />
+          </div>
+
+          {/* Right Side: Text Content */}
+          <div className="w-full md:w-1/2 lg:w-2/5 p-8 md:p-12 lg:p-16 flex flex-col justify-center text-left bg-white">
+            <div className="mb-6">
+              <span className="inline-block bg-yellow-50 text-yellow-600 text-[10px] font-black uppercase tracking-[0.2em] px-4 py-1.5 rounded-full border border-yellow-200/50">
+                Featured Video
+              </span>
+            </div>
+            
+            <h2 className="font-serif text-3xl md:text-4xl lg:text-5xl font-bold text-gray-900 mb-6 tracking-wide leading-tight">
+              A Glimpse Of <br className="hidden lg:block"/> 
+              <span className="text-yellow-600">Our Craft</span>
+            </h2>
+            
+            <p className="text-gray-500 leading-relaxed text-sm md:text-base">
+              Experience the meticulous attention to detail and hand-crafted precision that goes into every single kurti we create. From selecting the finest fabrics to the final intricate stitches, our artisans pour their heart into delivering timeless elegance you can wear.
+            </p>
+            
+            <div className="mt-8 flex items-center gap-4">
+               <div className="w-12 h-[2px] bg-yellow-400"></div>
+               <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">Handcrafted Perfection</span>
+            </div>
+          </div>
+        </motion.div>
       </div>
-
-      {/* Video Element */}
-      {isPlaying && (
-        <div className="absolute inset-0 z-10 bg-black flex items-center justify-center">
-          <button 
-            onClick={() => setIsPlaying(false)}
-            className="absolute top-6 right-6 z-20 w-12 h-12 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center text-white backdrop-blur-md transition-colors border border-white/20"
-          >
-            <FiX size={24} />
-          </button>
-          <iframe 
-            className="w-full h-full max-w-6xl max-h-[80vh] aspect-video"
-            src="https://www.youtube.com/embed/dQw4w9WgXcQ?autoplay=1&controls=1&modestbranding=1" 
-            title="Featured Video" 
-            frameBorder="0" 
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
-            allowFullScreen
-          ></iframe>
-        </div>
-      )}
-
-      {/* Overlay Content */}
-      {!isPlaying && (
-        <div className="relative z-10 flex flex-col items-center text-center px-4 mt-8">
-          <motion.span 
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="text-white/90 text-sm tracking-[0.15em] mb-4 font-medium font-sans"
-          >
-            Featured Video
-          </motion.span>
-          
-          <motion.h2 
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ delay: 0.1 }}
-            className="text-white font-serif text-4xl md:text-5xl lg:text-6xl mb-12 tracking-wide font-light"
-          >
-            A Glimpse Of Our Craft
-          </motion.h2>
-
-          <motion.button 
-            initial={{ opacity: 0, scale: 0.8 }}
-            whileInView={{ opacity: 1, scale: 1 }}
-            viewport={{ once: true }}
-            transition={{ delay: 0.2, type: 'spring', bounce: 0.4 }}
-            onClick={() => setIsPlaying(true)}
-            className="w-20 h-20 md:w-24 md:h-24 bg-white rounded-full flex items-center justify-center hover:scale-105 transition-transform shadow-[0_0_40px_rgba(0,0,0,0.4)] group cursor-pointer border-none"
-          >
-            <div className="w-0 h-0 border-t-[10px] border-t-transparent border-l-[18px] border-l-black border-b-[10px] border-b-transparent ml-2 group-hover:scale-110 transition-transform" />
-          </motion.button>
-        </div>
-      )}
     </section>
   )
 }
@@ -858,18 +881,24 @@ const ScrollStitchDivider = ({ text = "Tailored Elegance" }) => {
   const [stitchProgress, setStitchProgress] = useState(0);
 
   useEffect(() => {
+    let ticking = false;
     const handleScroll = () => {
-      if (!containerRef.current) return;
-      const rect = containerRef.current.getBoundingClientRect();
-      const windowHeight = window.innerHeight;
-      
-      // Calculate progress starting from bottom edge entry up to middle/top focus area
-      const entryPoint = rect.top - windowHeight;
-      const totalDistance = windowHeight * 0.85; // Animates smoothly over the viewport sweep
-      
-      if (rect.top < windowHeight && rect.bottom > 0) {
-        const progress = Math.min(Math.max(-entryPoint / totalDistance, 0), 1);
-        setStitchProgress(progress * 100);
+      if (!ticking) {
+        window.requestAnimationFrame(() => {
+          if (containerRef.current) {
+            const rect = containerRef.current.getBoundingClientRect();
+            const windowHeight = window.innerHeight;
+            
+            if (rect.top < windowHeight && rect.bottom > 0) {
+              const entryPoint = rect.top - windowHeight;
+              const totalDistance = windowHeight * 0.85; // Animates smoothly over the viewport sweep
+              const progress = Math.min(Math.max(-entryPoint / totalDistance, 0), 1);
+              setStitchProgress(progress * 100);
+            }
+          }
+          ticking = false;
+        });
+        ticking = true;
       }
     };
 
@@ -951,14 +980,21 @@ const HomePage = () => {
   const { categories } = useSelector((state) => state.categories)
   const [activePromos, setActivePromos] = useState([])
   const [currentSlide, setCurrentSlide] = useState(0)
+  const [promosLoading, setPromosLoading] = useState(true)
 
   useEffect(() => {
     dispatch(fetchFeaturedProducts())
     dispatch(fetchCategories())
 
     api.get('/coupons/active')
-      .then(({ data }) => setActivePromos(data.coupons || []))
-      .catch(err => console.error('Failed to load active category promos', err))
+      .then(({ data }) => {
+        setActivePromos(data.coupons || [])
+        setPromosLoading(false)
+      })
+      .catch(err => {
+        console.error('Failed to load active category promos', err)
+        setPromosLoading(false)
+      })
   }, [dispatch])
 
   const bannerCoupons = activePromos.filter(c => c.showBanner && c.isActive);
@@ -1024,6 +1060,7 @@ const HomePage = () => {
         currentSlide={currentSlide} 
         setCurrentSlide={setCurrentSlide} 
         totalSlides={bannerCoupons.length} 
+        loading={promosLoading}
       />
 
       <ScrollStitchDivider text="Hand-Tailoring Excellence" />
@@ -1043,10 +1080,8 @@ const HomePage = () => {
 
       <ScrollStitchDivider text="Intricate Embroidery Stitches" />
 
-      {/* 5. Promo Banners */}
-      <PromoBanners />
-
-      {/* 6. New Arrivals */}
+      {/* 5. Promotional Banners */}
+      <PromoBanners />      {/* 6. New Arrivals */}
       <ProductSection
         tag="✨ Just In"
         title="New Kurti Arrivals"
@@ -1056,10 +1091,8 @@ const HomePage = () => {
         loading={loading && !featured}
       />
 
-      {/* 7. Shop By Age Group */}
-      <ShopByAge />
-
-      {/* 8. Best Sellers */}
+      {/* 7. Shop By Age / Size (Placeholder component for now) */}
+      <ShopByAge />      {/* 8. Best Sellers */}
       <ProductSection
         tag="⭐ Most Loved"
         title="Best Selling Kurtis"
@@ -1072,7 +1105,8 @@ const HomePage = () => {
       <ScrollStitchDivider text="Block-Print & Custom Craftsmanship" />
 
       {/* 9. All Kurti Categories */}
-      <section className="py-14 bg-transparent">
+      <section className="py-1
+      4 bg-transparent">
         <div className="page-container">
           <SectionTitle tag="All Collections" title="Browse All Kurti Types" description="From casual cotton to festive embroidered — we have every kurti you need" />
           <CategoryGrid />

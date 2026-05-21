@@ -7,6 +7,7 @@ import { addToCart } from '../../store/slices/cartSlice'
 import { toggleWishlist, selectIsWishlisted } from '../../store/slices/wishlistSlice'
 import { openAuthModal } from '../../store/slices/uiSlice'
 import { formatPrice, calcDiscount } from '../../utils/helpers'
+import { useProductOffer } from '../../context/SaleContext'
 import StarRating from '../ui/StarRating'
 import toast from 'react-hot-toast'
 
@@ -48,6 +49,7 @@ const ProductCard = ({ product, compact = false }) => {
   const [isHovered, setIsHovered] = useState(false)
   const { isAuthenticated } = useSelector((state) => state.auth)
   const isWishlisted = useSelector(selectIsWishlisted(product._id))
+  const saleOffer = useProductOffer(product._id)
   
   const scrollRef = useRef(null)
 
@@ -117,24 +119,54 @@ const ProductCard = ({ product, compact = false }) => {
     dispatch(toggleWishlist(product._id))
   }
 
-  const discount = calcDiscount(product.price, product.discountPrice)
+  // ── Price & Discount Logic ──
+  // Priority: sale campaign offer > product's own discountPrice > regular price
+  const basePrice = product.price
+  const productDiscountPrice = product.discountPrice
+  const productDiscount = calcDiscount(basePrice, productDiscountPrice)
+
+  let displayPrice, originalPrice, discountPercent, hasSale
+  if (saleOffer) {
+    // Active sale campaign on this product
+    const saleBase = productDiscountPrice || basePrice
+    displayPrice = saleOffer.offerPrice
+    originalPrice = saleBase
+    discountPercent = saleOffer.discountPercent
+    hasSale = true
+  } else if (productDiscountPrice) {
+    // Product's own discount
+    displayPrice = productDiscountPrice
+    originalPrice = basePrice
+    discountPercent = productDiscount
+    hasSale = false
+  } else {
+    displayPrice = basePrice
+    originalPrice = null
+    discountPercent = 0
+    hasSale = false
+  }
+
   const images = product.images || []
   const currentImage = images[imageIndex]?.url || images[0]?.url || 'https://via.placeholder.com/400x500?text=Kurti'
 
   if (compact) {
     return (
       <Link to={`/products/${product.slug || product._id}`} className="flex gap-3 p-2 rounded-xl hover:bg-gray-50 transition-colors">
-        <img src={currentImage} alt={product.name} className="w-16 h-20 object-cover rounded-lg flex-shrink-0 border border-gray-100" />
+        <div className="relative">
+          <img src={currentImage} alt={product.name} className="w-16 h-20 object-cover rounded-lg flex-shrink-0 border border-gray-100" />
+          {hasSale && (
+            <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[7px] font-black px-1 py-0.5 rounded leading-none">SALE</span>
+          )}
+        </div>
         <div className="flex-1 min-w-0">
           <p className="text-sm text-gray-800 font-medium truncate">{product.name}</p>
           <div className="flex items-center gap-2 mt-1">
-            {product.discountPrice ? (
-              <>
-                <span className="text-yellow-600 font-bold text-sm">{formatPrice(product.discountPrice)}</span>
-                <span className="text-gray-300 text-xs line-through">{formatPrice(product.price)}</span>
-              </>
-            ) : (
-              <span className="text-yellow-600 font-bold text-sm">{formatPrice(product.price)}</span>
+            <span className={`font-bold text-sm ${hasSale ? 'text-red-600' : 'text-yellow-600'}`}>{formatPrice(displayPrice)}</span>
+            {originalPrice && (
+              <span className="text-gray-300 text-xs line-through">{formatPrice(originalPrice)}</span>
+            )}
+            {discountPercent > 0 && (
+              <span className={`text-[10px] font-bold ${hasSale ? 'text-red-500' : 'text-green-600'}`}>{discountPercent}% OFF</span>
             )}
           </div>
         </div>
@@ -168,6 +200,7 @@ const ProductCard = ({ product, compact = false }) => {
                     alt={`${product.name} - ${i + 1}`}
                     className="w-full h-full object-cover"
                     loading="lazy"
+                    decoding="async"
                   />
                 </div>
               ))
@@ -177,6 +210,8 @@ const ProductCard = ({ product, compact = false }) => {
                   src="https://via.placeholder.com/400x500?text=Kurti"
                   alt={product.name}
                   className="w-full h-full object-cover"
+                  loading="lazy"
+                  decoding="async"
                 />
               </div>
             )}
@@ -206,7 +241,12 @@ const ProductCard = ({ product, compact = false }) => {
 
           {/* Badges */}
           <div className="absolute top-3 left-3 flex flex-col gap-1">
-            {discount > 0 && <span className="badge-sale">-{discount}%</span>}
+            {hasSale && (
+              <span className="bg-red-500 text-white text-[10px] font-black px-2 py-0.5 rounded-md shadow-sm uppercase tracking-wide animate-pulse">
+                🔥 Sale
+              </span>
+            )}
+            {discountPercent > 0 && !hasSale && <span className="badge-sale">-{discountPercent}%</span>}
             {product.isNewArrival && <span className="badge-new">New</span>}
             {product.isTrending && <span className="badge-trending">🔥</span>}
           </div>
@@ -278,16 +318,26 @@ const ProductCard = ({ product, compact = false }) => {
           <p className="text-gray-400 text-xs mb-1">{product.category?.name || 'Kurti'}</p>
           <h3 className="text-gray-800 font-semibold text-sm leading-tight mb-2 line-clamp-2">{product.name}</h3>
           <StarRating rating={product.ratings} size={12} showCount count={product.numReviews} />
-          <div className="flex items-center gap-2 mt-2">
-            {product.discountPrice ? (
-              <>
-                <span className="text-yellow-600 font-bold">{formatPrice(product.discountPrice)}</span>
-                <span className="text-gray-300 text-sm line-through">{formatPrice(product.price)}</span>
-              </>
-            ) : (
-              <span className="text-yellow-600 font-bold">{formatPrice(product.price)}</span>
+          
+          {/* Price Display */}
+          <div className="flex items-center gap-2 mt-2 flex-wrap">
+            <span className={`font-bold ${hasSale ? 'text-red-600' : 'text-yellow-600'}`}>
+              {formatPrice(displayPrice)}
+            </span>
+            {originalPrice && originalPrice !== displayPrice && (
+              <span className="text-gray-300 text-sm line-through">{formatPrice(originalPrice)}</span>
+            )}
+            {discountPercent > 0 && (
+              <span className={`text-[10px] font-black px-1.5 py-0.5 rounded ${
+                hasSale 
+                  ? 'bg-red-50 text-red-600 border border-red-200' 
+                  : 'text-green-600'
+              }`}>
+                {discountPercent}% OFF
+              </span>
             )}
           </div>
+
           {product.colors?.length > 0 && (
             <div className="flex gap-1 mt-2">
               {product.colors.slice(0, 5).map((color, i) => (

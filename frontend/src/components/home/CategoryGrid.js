@@ -10,76 +10,6 @@ import img3 from '../../assets/091A7713.webp'
 import img4 from '../../assets/NIJU9620.webp'
 import img5 from '../../assets/NIJU9633.webp'
 
-export const KURTI_CATEGORIES = [
-  // By Type — use your 5 images cycling through
-  {
-    name: 'Anarkali Kurtis', slug: 'anarkali-kurtis', count: '60+ styles', group: 'By Type',
-    desc: 'Flared & Elegant', img: img1, bg: 'from-purple-50 to-pink-50',
-  },
-  {
-    name: 'A-Line Kurtis', slug: 'a-line-kurtis', count: '80+ styles', group: 'By Type',
-    desc: 'Slim & Flattering', img: img2, bg: 'from-blue-50 to-cyan-50',
-  },
-  {
-    name: 'Straight Kurtis', slug: 'straight-kurtis', count: '90+ styles', group: 'By Type',
-    desc: 'Classic & Versatile', img: img3, bg: 'from-teal-50 to-green-50',
-  },
-  {
-    name: 'Flared Kurtis', slug: 'flared-kurtis', count: '50+ styles', group: 'By Type',
-    desc: 'Free & Flowy', img: img4, bg: 'from-yellow-50 to-amber-50',
-  },
-  {
-    name: 'Asymmetric Kurtis', slug: 'asymmetric-kurtis', count: '40+ styles', group: 'By Type',
-    desc: 'Modern & Edgy', img: img5, bg: 'from-rose-50 to-pink-50',
-  },
-  {
-    name: 'Kaftan Kurtis', slug: 'kaftan-kurtis', count: '35+ styles', group: 'By Type',
-    desc: 'Flowy & Comfortable', img: img1, bg: 'from-sky-50 to-blue-50',
-  },
-  // By Design
-  {
-    name: 'Printed Kurtis', slug: 'printed-kurtis', count: '150+ styles', group: 'By Design',
-    desc: 'Bold & Vibrant', img: img2, bg: 'from-yellow-50 to-orange-50',
-  },
-  {
-    name: 'Embroidered Kurtis', slug: 'embroidered-kurtis', count: '70+ styles', group: 'By Design',
-    desc: 'Intricate & Festive', img: img3, bg: 'from-pink-50 to-rose-50',
-  },
-  {
-    name: 'Plain Kurtis', slug: 'plain-kurtis', count: '60+ styles', group: 'By Design',
-    desc: 'Minimal & Clean', img: img4, bg: 'from-gray-50 to-slate-50',
-  },
-  {
-    name: 'Block Print Kurtis', slug: 'block-print-kurtis', count: '45+ styles', group: 'By Design',
-    desc: 'Handcrafted & Artsy', img: img5, bg: 'from-amber-50 to-yellow-50',
-  },
-  // By Occasion
-  {
-    name: 'Casual Kurtis', slug: 'casual-kurtis', count: '120+ styles', group: 'By Occasion',
-    desc: 'Everyday Comfort', img: img1, bg: 'from-lime-50 to-green-50',
-  },
-  {
-    name: 'Office Kurtis', slug: 'office-kurtis', count: '70+ styles', group: 'By Occasion',
-    desc: 'Professional & Smart', img: img2, bg: 'from-slate-50 to-gray-50',
-  },
-  {
-    name: 'Party Wear Kurtis', slug: 'party-wear-kurtis', count: '80+ styles', group: 'By Occasion',
-    desc: 'Glamorous & Chic', img: img3, bg: 'from-fuchsia-50 to-pink-50',
-  },
-  {
-    name: 'Festival Kurtis', slug: 'festival-kurtis', count: '55+ styles', group: 'By Occasion',
-    desc: 'Vibrant & Celebratory', img: img4, bg: 'from-orange-50 to-red-50',
-  },
-  // By Age
-  {
-    name: "Women's Kurtis", slug: 'womens-kurtis', count: '300+ styles', group: 'By Age',
-    desc: '18 – 45 yrs', img: img5, bg: 'from-rose-50 to-pink-50',
-  },
-  {
-    name: "Girls' Kurtis", slug: 'girls-kurtis', count: '80+ styles', group: 'By Age',
-    desc: '8 – 17 yrs', img: img1, bg: 'from-sky-50 to-blue-50',
-  },
-]
 
 const CategoryCard = ({ cat, index }) => (
   <motion.div
@@ -110,6 +40,63 @@ const CategoryCard = ({ cat, index }) => (
   </motion.div>
 )
 
+const KURTI_CATEGORIES = [
+  {
+    name: 'Anarkali Kurtis',
+    slug: 'anarkali-kurtis',
+    desc: 'Regal & Flowing',
+    img: img2,
+    bg: 'from-pink-100 to-rose-50',
+    group: 'Premium',
+    count: '24+ Styles'
+  },
+  {
+    name: 'A-Line Kurtis',
+    slug: 'a-line-kurtis',
+    desc: 'Classic Everyday',
+    img: img1,
+    bg: 'from-blue-100 to-sky-50',
+    group: 'Everyday',
+    count: '45+ Styles'
+  },
+  {
+    name: 'Straight Kurtis',
+    slug: 'straight-kurtis',
+    desc: 'Office & Casual',
+    img: img3,
+    bg: 'from-amber-100 to-yellow-50',
+    group: 'Workwear',
+    count: '30+ Styles'
+  },
+  {
+    name: 'Printed Kurtis',
+    slug: 'printed-kurtis',
+    desc: 'Vibrant Patterns',
+    img: img2,
+    bg: 'from-emerald-100 to-teal-50',
+    group: 'Casual',
+    count: '50+ Styles'
+  },
+  {
+    name: 'Embroidered',
+    slug: 'embroidered-kurtis',
+    desc: 'Intricate Details',
+    img: img1,
+    bg: 'from-purple-100 to-fuchsia-50',
+    group: 'Premium',
+    count: '15+ Styles'
+  },
+  {
+    name: 'Party Wear',
+    slug: 'party-wear-kurtis',
+    desc: 'Festive Ready',
+    img: img3,
+    bg: 'from-rose-100 to-red-50',
+    group: 'Occasion',
+    count: '20+ Styles'
+  }
+];
+
 const CategoryGrid = () => {
   const { categories: dynamicCategories } = useSelector((state) => state.categories)
   
@@ -129,10 +116,10 @@ const CategoryGrid = () => {
         desc: cat.description || 'Premium Collection',
         img: cat.image?.url || img1,
         bg: gradients[i % gradients.length],
-        group: 'All Collections',
+        group: i % 2 === 0 ? 'Premium' : 'Everyday',
         count: ''
       }))
-    : KURTI_CATEGORIES
+    : KURTI_CATEGORIES;
 
   const groups = [...new Set(mappedCategories.map(c => c.group))]
 

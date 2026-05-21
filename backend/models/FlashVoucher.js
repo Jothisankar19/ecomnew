@@ -143,7 +143,7 @@ flashVoucherSchema.methods.calculateDiscount = function(cartItems = [], totalAmo
     discount = Math.min(discount, this.maxDiscountLimit);
   }
 
-  return Math.min(discount, totalAmount);
+  return Math.min(discount, baseAmount);
 };
 
 module.exports = mongoose.model('FlashVoucher', flashVoucherSchema);

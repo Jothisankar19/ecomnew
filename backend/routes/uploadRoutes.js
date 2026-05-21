@@ -31,13 +31,17 @@ router.post('/', protect, adminOnly, upload.array('files', 10), async (req, res)
     }
 
     const folder = req.body.folder || 'ethnic-elegance/products';
+    const isBanner = folder.includes('banners');
+    const transformation = isBanner
+      ? [{ width: 2000, height: 1000, crop: 'limit', quality: 'auto:best', fetch_format: 'auto' }]
+      : [{ width: 800, height: 1000, crop: 'limit', quality: 'auto:good', fetch_format: 'auto' }];
 
     const uploadPromises = req.files.map(file => {
       return new Promise((resolve, reject) => {
         const stream = cloudinary.uploader.upload_stream(
           {
             folder,
-            transformation: [{ width: 800, height: 1000, crop: 'limit', quality: 'auto:good', fetch_format: 'auto' }]
+            transformation
           },
           (err, result) => {
             if (err) reject(err);

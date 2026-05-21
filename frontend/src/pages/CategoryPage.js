@@ -3,7 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { motion } from 'framer-motion';
 import { Helmet } from 'react-helmet-async';
-import { FiArrowLeft, FiFilter } from 'react-icons/fi';
+import { FiArrowLeft } from 'react-icons/fi';
 import { fetchProducts, setFilters } from '../store/slices/productSlice';
 import ProductCard from '../components/product/ProductCard';
 import { SkeletonGrid } from '../components/ui/SkeletonCard';
@@ -28,7 +28,6 @@ const CategoryPage = () => {
           dispatch(fetchProducts({ category: data.category._id, sort, page }));
         }
       } catch (err) {
-        // Try fetching by name
         dispatch(fetchProducts({ categorySlug: slug, sort, page }));
       }
     };
@@ -48,24 +47,9 @@ const CategoryPage = () => {
     "@context": "https://schema.org",
     "@type": "BreadcrumbList",
     "itemListElement": [
-      {
-        "@type": "ListItem",
-        "position": 1,
-        "name": "Home",
-        "item": "https://kurtielegance.com/"
-      },
-      {
-        "@type": "ListItem",
-        "position": 2,
-        "name": "Products",
-        "item": "https://kurtielegance.com/products"
-      },
-      {
-        "@type": "ListItem",
-        "position": 3,
-        "name": categoryName,
-        "item": window.location.href
-      }
+      { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://kurtielegance.com/" },
+      { "@type": "ListItem", "position": 2, "name": "Collections", "item": "https://kurtielegance.com/categories" },
+      { "@type": "ListItem", "position": 3, "name": categoryName, "item": window.location.href }
     ]
   };
 
@@ -78,22 +62,10 @@ const CategoryPage = () => {
       />
 
       <div className="pt-24 min-h-screen">
-        {/* Category Hero */}
         <div className="relative py-16 bg-gradient-to-br from-yellow-900/30 via-dark-800 to-dark-900 border-b border-white/10">
-          <div className="absolute inset-0 overflow-hidden">
-            {[...Array(8)].map((_, i) => (
-              <motion.div
-                key={i}
-                className="absolute w-1 h-1 rounded-full bg-yellow-400/20"
-                style={{ left: `${Math.random() * 100}%`, top: `${Math.random() * 100}%` }}
-                animate={{ y: [0, -20, 0], opacity: [0.2, 0.6, 0.2] }}
-                transition={{ duration: 3 + Math.random() * 3, repeat: Infinity, delay: Math.random() * 2 }}
-              />
-            ))}
-          </div>
           <div className="page-container relative z-10">
-            <Link to="/products" className="flex items-center gap-2 text-white/50 hover:text-white mb-4 transition-colors text-sm">
-              <FiArrowLeft size={16} /> All Products
+            <Link to="/categories" className="flex items-center gap-2 text-white/50 hover:text-white mb-4 transition-colors text-sm">
+              <FiArrowLeft size={16} /> All Collections
             </Link>
             <h1 className="font-display text-4xl md:text-5xl font-bold text-gradient-gold mb-2">{categoryName}</h1>
             <p className="text-white/50">{total} products in this collection</p>
@@ -101,7 +73,6 @@ const CategoryPage = () => {
         </div>
 
         <div className="page-container py-8">
-          {/* Sort */}
           <div className="flex items-center justify-between mb-8">
             <p className="text-white/40 text-sm">{total} products found</p>
             <select
@@ -124,7 +95,7 @@ const CategoryPage = () => {
               <p className="text-6xl mb-4">🔍</p>
               <h3 className="text-white text-xl font-semibold mb-2">No products found</h3>
               <p className="text-white/40 mb-6">This category is coming soon</p>
-              <Link to="/products" className="btn-primary">Browse All Products</Link>
+              <Link to="/categories" className="btn-primary">Browse All Collections</Link>
             </div>
           ) : (
             <>

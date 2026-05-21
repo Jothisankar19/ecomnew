@@ -3,7 +3,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Helmet } from 'react-helmet-async';
 import { 
   FiPlus, FiEdit2, FiTrash2, FiX, FiPercent, FiCopy, FiCheck, 
-  FiClock, FiTrendingUp, FiSettings, FiTag, FiZap, FiGrid, FiUpload 
+  FiClock, FiTrendingUp, FiSettings, FiTag, FiZap, FiGrid, FiUpload,
+  FiImage, FiLoader
 } from 'react-icons/fi';
 import api from '../../utils/api';
 import { formatPrice, formatDate } from '../../utils/helpers';
@@ -33,12 +34,21 @@ const emptyCoupon = {
 
 // ── Unified Premium Coupon & Flash Voucher Modal (Wide Card Redesign) ──
 const CouponModal = ({ coupon, onClose, onSave }) => {
+  // Helper to convert date to local ISO format for datetime-local input
+  const toLocalISOString = (dateInput) => {
+    if (!dateInput) return '';
+    const date = new Date(dateInput);
+    if (isNaN(date.getTime())) return '';
+    const tzOffset = date.getTimezoneOffset() * 60000;
+    return new Date(date.getTime() - tzOffset).toISOString().slice(0, 16);
+  };
+
   const [form, setForm] = useState(coupon ? {
     ...emptyCoupon,
     ...coupon,
     autoGenerate: false,
-    validFrom: coupon.validFrom ? new Date(coupon.validFrom).toISOString().slice(0, 16) : '',
-    validUntil: (coupon.validUntil || coupon.expiresAt) ? new Date(coupon.validUntil || coupon.expiresAt).toISOString().slice(0, 16) : ''
+    validFrom: toLocalISOString(coupon.validFrom),
+    validUntil: toLocalISOString(coupon.validUntil || coupon.expiresAt)
   } : emptyCoupon);
 
   const [loading, setLoading] = useState(false);
@@ -51,6 +61,157 @@ const CouponModal = ({ coupon, onClose, onSave }) => {
   }, []);
 
   const [uploadingImage, setUploadingImage] = useState(false);
+
+  // ── Visual Image Compressor States ──
+  const [compressingFile, setCompressingFile] = useState(null);
+  const [originalSize, setOriginalSize] = useState(0);
+  const [previewSrc, setPreviewSrc] = useState('');
+  const [compressedBlob, setCompressedBlob] = useState(null);
+  const [compressQuality, setCompressQuality] = useState(0.85);
+  const [targetWidth, setTargetWidth] = useState(1200); // Widescreen banner optimized
+  const [stats, setStats] = useState({ original: 0, compressed: 0, w: 0, h: 0 });
+
+  // Visual Shifts & Zooms
+  const [zoom, setZoom] = useState(1.0);
+  const [xShift, setXShift] = useState(0.0);
+  const [yShift, setYShift] = useState(0.0);
+  const [cropRatio, setCropRatio] = useState(2.2);
+  const [padColor, setPadColor] = useState('#000000');
+
+  // Canvas-based real-time compressor & visual crop shift engine
+  const runCompression = (img, widthLim, quality, origSize, z = zoom, xs = xShift, ys = yShift, cr = cropRatio, pc = padColor) => {
+    const canvas = document.createElement('canvas');
+    
+    // The canvas is ALWAYS a perfect Widescreen 2.2:1 layout to prevent browser stretching
+    const W = widthLim === 9999 ? img.naturalWidth : widthLim;
+    const H = Math.round(W / 2.2);
+
+    canvas.width = W;
+    canvas.height = H;
+
+    const ctx = canvas.getContext('2d');
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+
+    // Compute dimensions of the crop area fitted inside the widescreen canvas
+    let cropAreaW, cropAreaH;
+    if (cr >= 2.2) {
+      cropAreaW = W;
+      cropAreaH = W / cr;
+    } else {
+      cropAreaH = H;
+      cropAreaW = H * cr;
+    }
+
+    const dx = (W - cropAreaW) / 2;
+    const dy = (H - cropAreaH) / 2;
+
+    // Compute source crop rectangle matching the aspect ratio
+    const imgRatio = img.naturalWidth / img.naturalHeight;
+    const cropRatioVal = cr;
+
+    let sWidth, sHeight;
+    if (imgRatio > cropRatioVal) {
+      sHeight = img.naturalHeight;
+      sWidth = img.naturalHeight * cropRatioVal;
+    } else {
+      sWidth = img.naturalWidth;
+      sHeight = img.naturalWidth / cropRatioVal;
+    }
+
+    // Apply Zoom factor scaling
+    sWidth = sWidth / z;
+    sHeight = sHeight / z;
+
+    // Calculate source anchor offsets
+    let sx = (img.naturalWidth - sWidth) / 2;
+    let sy = (img.naturalHeight - sHeight) / 2;
+
+    const maxShiftX = Math.abs(img.naturalWidth - sWidth) / 2;
+    const maxShiftY = Math.abs(img.naturalHeight - sHeight) / 2;
+
+    // Shift coordinates by input percentage
+    sx += xs * maxShiftX * 2;
+    sy += ys * maxShiftY * 2;
+
+    // Dynamic bounds mapping to support both Zoom IN (cropping) and Zoom OUT (padding)
+    let minSx, maxSx, minSy, maxSy;
+    if (sWidth <= img.naturalWidth) { minSx = 0; maxSx = img.naturalWidth - sWidth; } 
+    else { minSx = img.naturalWidth - sWidth; maxSx = 0; }
+    
+    if (sHeight <= img.naturalHeight) { minSy = 0; maxSy = img.naturalHeight - sHeight; } 
+    else { minSy = img.naturalHeight - sHeight; maxSy = 0; }
+
+    sx = Math.max(minSx, Math.min(maxSx, sx));
+    sy = Math.max(minSy, Math.min(maxSy, sy));
+
+    // Fill padding background with custom selected color
+    ctx.fillStyle = pc;
+    ctx.fillRect(0, 0, W, H);
+
+    // Draw the crop area centered inside the widescreen canvas
+    ctx.drawImage(img, sx, sy, sWidth, sHeight, dx, dy, cropAreaW, cropAreaH);
+
+    setPreviewSrc(canvas.toDataURL('image/jpeg', 0.85));
+
+    canvas.toBlob((blob) => {
+      if (!blob) return;
+      setCompressedBlob(blob);
+      setStats({
+        original: origSize,
+        compressed: blob.size,
+        w: W,
+        h: H
+      });
+    }, 'image/jpeg', quality);
+  };
+
+  const handleFileSelect = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setOriginalSize(file.size);
+    setZoom(1.0);
+    setXShift(0.0);
+    setYShift(0.0);
+    
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const img = new Image();
+      img.onload = () => {
+        setCompressingFile(img);
+        setPreviewSrc(event.target.result);
+        runCompression(img, targetWidth, compressQuality, file.size, 1.0, 0.0, 0.0);
+      };
+      img.src = event.target.result;
+    };
+    reader.readAsDataURL(file);
+  };
+
+  useEffect(() => {
+    if (compressingFile) {
+      runCompression(compressingFile, targetWidth, compressQuality, originalSize, zoom, xShift, yShift, cropRatio, padColor);
+    }
+  }, [compressQuality, targetWidth, zoom, xShift, yShift, cropRatio, padColor]);
+
+  const handleOptimizedUpload = async () => {
+    if (!compressedBlob) return;
+    setUploadingImage(true);
+    try {
+      const file = new File([compressedBlob], 'optimized-coupon-banner.jpg', { type: 'image/jpeg' });
+      const fd = new FormData();
+      fd.append('files', file);
+      fd.append('folder', 'ethnic-elegance/coupons');
+      
+      const { data } = await api.post('/upload', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+      setForm(prev => ({ ...prev, bannerImage: data.files[0].url }));
+      toast.success('Optimized banner image uploaded!');
+      setCompressingFile(null);
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Upload failed');
+    }
+    setUploadingImage(false);
+  };
 
   const generateRandomCode = () => {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
@@ -193,16 +354,29 @@ const CouponModal = ({ coupon, onClose, onSave }) => {
               />
             </div>
 
-            {/* Value and Stock */}
-            <div className="grid grid-cols-2 gap-3">
+            {/* Discount Configuration (Type, Value, Quota) */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               <div>
-                <label className="text-gray-500 text-xs font-bold uppercase tracking-wider mb-1 block">Discount Value</label>
+                <label className="text-gray-500 text-xs font-bold uppercase tracking-wider mb-1 block">Discount Type</label>
+                <select
+                  value={form.discountType}
+                  onChange={(e) => setForm({ ...form, discountType: e.target.value })}
+                  className="w-full px-3 py-2.5 bg-gray-50 border border-gray-100 rounded-xl focus:outline-none focus:border-yellow-500 focus:bg-white text-gray-900 text-sm font-semibold transition-all"
+                >
+                  <option value="percentage">Percentage (%)</option>
+                  <option value="fixed">Fixed Amount (₹)</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-gray-500 text-xs font-bold uppercase tracking-wider mb-1 block">
+                  {form.discountType === 'percentage' ? 'Discount Percentage (%)' : 'Discount Amount (₹)'}
+                </label>
                 <input
                   type="number"
                   value={form.discountValue}
                   onChange={(e) => setForm({ ...form, discountValue: e.target.value })}
-                  className="w-full px-4 py-2.5 bg-gray-50 border border-gray-100 rounded-xl focus:outline-none focus:border-yellow-500 focus:bg-white text-gray-900 text-sm transition-all"
-                  placeholder="20 for 20%"
+                  className="w-full px-4 py-2.5 bg-gray-50 border border-gray-100 rounded-xl focus:outline-none focus:border-yellow-500 focus:bg-white text-gray-900 text-sm font-semibold transition-all"
+                  placeholder={form.discountType === 'percentage' ? 'e.g. 20 for 20%' : 'e.g. 250 for ₹250'}
                   required
                   min="1"
                 />
@@ -326,7 +500,7 @@ const CouponModal = ({ coupon, onClose, onSave }) => {
                             type="file" 
                             accept="image/*" 
                             className="hidden" 
-                            onChange={handleBannerImageUpload} 
+                            onChange={handleFileSelect} 
                             disabled={uploadingImage} 
                           />
                         </label>
@@ -551,6 +725,259 @@ const CouponModal = ({ coupon, onClose, onSave }) => {
             <button type="button" onClick={onClose} className="bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold flex-1 text-sm rounded-2xl transition-colors">Cancel</button>
           </div>
         </form>
+
+        {/* ── Visual Compressor & Adjuster Workspace Overlay ── */}
+        <AnimatePresence>
+          {compressingFile && (
+            <div className="fixed inset-0 z-[100] bg-black/85 backdrop-blur-md flex items-center justify-center p-4">
+              <motion.div
+                initial={{ scale: 0.95, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.95, opacity: 0 }}
+                className="bg-[#151515] border border-neutral-800 rounded-3xl p-6 w-full max-w-4xl shadow-2xl max-h-[90vh] overflow-y-auto flex flex-col gap-6"
+                onClick={(e) => e.stopPropagation()}
+              >
+                {/* Header */}
+                <div className="flex items-center justify-between border-b border-neutral-850 pb-4">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-10 h-10 rounded-xl bg-yellow-500/10 flex items-center justify-center border border-yellow-500/20">
+                      <FiImage className="text-yellow-500" size={20} />
+                    </div>
+                    <div>
+                      <h4 className="text-white font-extrabold text-base">Widescreen Image Alignment & Compressor Workspace</h4>
+                      <p className="text-neutral-400 text-xs">Adjust image scale, horizontal & vertical shifts, and verify file size savings</p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setCompressingFile(null)}
+                    className="w-8 h-8 rounded-xl bg-neutral-900 border border-neutral-800 hover:bg-neutral-850 hover:border-neutral-700 text-neutral-400 hover:text-white flex items-center justify-center transition-all"
+                  >
+                    <FiX size={18} />
+                  </button>
+                </div>
+
+                {/* Workspace Layout Grid */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start text-left">
+                  {/* Left side: Live projection preview */}
+                  <div className="space-y-4">
+                    <span className="text-[10px] font-black tracking-widest text-yellow-500 uppercase block">Projected Live Crop Area</span>
+                    <div className="w-full rounded-2xl overflow-hidden border border-neutral-800 bg-[#0c0c0c] flex items-center justify-center shadow-inner relative group" style={{ aspectRatio: cropRatio }}>
+                      {previewSrc ? (
+                        <img src={previewSrc} alt="Optimized Projective Preview" className="w-full h-full object-contain" />
+                      ) : (
+                        <FiLoader className="text-yellow-500 animate-spin" size={24} />
+                      )}
+                    </div>
+                    
+                    {/* File specs comparison dashboard */}
+                    <div className="grid grid-cols-3 gap-2 bg-[#0c0c0c] p-3 rounded-2xl border border-neutral-900">
+                      <div className="text-center p-1">
+                        <span className="text-neutral-500 text-[9px] font-bold block uppercase tracking-wider">Before Scale</span>
+                        <strong className="text-neutral-300 text-xs font-black">{(stats.original / 1024).toFixed(1)} KB</strong>
+                      </div>
+                      <div className="text-center p-1 border-x border-neutral-850">
+                        <span className="text-neutral-500 text-[9px] font-bold block uppercase tracking-wider">Optimized Size</span>
+                        <strong className="text-yellow-500 text-xs font-black">{(stats.compressed / 1024).toFixed(1)} KB</strong>
+                      </div>
+                      <div className="text-center p-1">
+                        <span className="text-neutral-500 text-[9px] font-bold block uppercase tracking-wider">File Weight Save</span>
+                        <strong className="text-green-500 text-xs font-black">
+                          {stats.original ? Math.round(((stats.original - stats.compressed) / stats.original) * 100) : 0}% SAVED
+                        </strong>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Right side: visual cropper & quality compression control */}
+                  <div className="space-y-5 bg-[#0d0d0d] p-5 rounded-3xl border border-neutral-900">
+                    <span className="text-[10px] font-black tracking-widest text-yellow-500 uppercase block">Interactive Alignment Controls</span>
+                    
+                    {/* Zoom Slider */}
+                    <div className="space-y-1.5">
+                      <div className="flex justify-between items-center text-xs">
+                        <label className="text-neutral-300 font-bold">Graphic Zoom Scale</label>
+                        <span className="text-yellow-500 font-black">{zoom.toFixed(2)}x</span>
+                      </div>
+                      <input
+                        type="range"
+                        min="0.20"
+                        max="3.00"
+                        step="0.05"
+                        value={zoom}
+                        onChange={(e) => setZoom(parseFloat(e.target.value))}
+                        className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-yellow-500"
+                      />
+                    </div>
+
+                    {/* Horizontal shift */}
+                    <div className="space-y-1.5">
+                      <div className="flex justify-between items-center text-xs">
+                        <label className="text-neutral-300 font-bold">Horizontal Focal Shift (👈 Left / Right 👉)</label>
+                        <span className="text-yellow-500 font-black">{xShift > 0 ? `+${Math.round(xShift * 100)}%` : `${Math.round(xShift * 100)}%`}</span>
+                      </div>
+                      <input
+                        type="range"
+                        min="-1.50"
+                        max="1.50"
+                        step="0.05"
+                        value={xShift}
+                        onChange={(e) => setXShift(parseFloat(e.target.value))}
+                        className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-yellow-500"
+                      />
+                    </div>
+
+                    {/* Vertical shift */}
+                    <div className="space-y-1.5">
+                      <div className="flex justify-between items-center text-xs">
+                        <label className="text-neutral-300 font-bold">Vertical Focal Shift (☝️ Up / Down 👇)</label>
+                        <span className="text-yellow-500 font-black">{yShift > 0 ? `+${Math.round(yShift * 100)}%` : `${Math.round(yShift * 100)}%`}</span>
+                      </div>
+                      <input
+                        type="range"
+                        min="-1.50"
+                        max="1.50"
+                        step="0.05"
+                        value={yShift}
+                        onChange={(e) => setYShift(parseFloat(e.target.value))}
+                        className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-yellow-500"
+                      />
+                    </div>
+
+                    {/* Aspect Ratio Selector */}
+                    <div className="space-y-1.5">
+                      <label className="text-neutral-300 text-xs font-bold block">Target Aspect Ratio</label>
+                      <div className="grid grid-cols-2 gap-2 p-1 bg-neutral-900 border border-neutral-850 rounded-xl">
+                        {[
+                          { label: 'Widescreen (2.2:1)', val: 2.2 },
+                          { label: 'Standard (16:9)', val: 1.777 },
+                          { label: 'Classic (4:3)', val: 1.333 },
+                          { label: 'Square (1:1)', val: 1.0 },
+                        ].map((item) => (
+                          <button
+                            key={item.val}
+                            type="button"
+                            onClick={() => setCropRatio(item.val)}
+                            className={`py-2 text-center rounded-lg text-[10px] font-black transition-all ${
+                              cropRatio === item.val
+                                ? 'bg-yellow-500 text-black shadow-sm'
+                                : 'bg-transparent text-neutral-400 hover:text-neutral-250 hover:bg-neutral-850'
+                            }`}
+                          >
+                            {item.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Canvas Padding Color */}
+                    <div className="space-y-1.5">
+                      <label className="text-neutral-300 text-xs font-bold block">Canvas Padding Color</label>
+                      <div className="flex gap-3 items-center">
+                        <div className="flex items-center gap-1.5 bg-neutral-900 border border-neutral-850 rounded-xl px-3 py-2">
+                          <input
+                            type="color"
+                            value={padColor}
+                            onChange={(e) => setPadColor(e.target.value)}
+                            className="w-6 h-6 border-0 rounded cursor-pointer p-0 bg-transparent"
+                          />
+                          <span className="text-xs font-mono font-bold text-neutral-400">{padColor.toUpperCase()}</span>
+                        </div>
+                        <div className="flex gap-1.5 flex-1 justify-end">
+                          {[
+                            { label: 'Black', val: '#000000' },
+                            { label: 'Cocoa', val: '#2b1d16' },
+                            { label: 'Cream', val: '#faf6f0' },
+                            { label: 'Grey', val: '#f5f5f7' },
+                            { label: 'White', val: '#ffffff' }
+                          ].map((color) => (
+                            <button
+                              key={color.val}
+                              type="button"
+                              onClick={() => setPadColor(color.val)}
+                              className="w-6 h-6 rounded-full border border-neutral-800 shadow-sm relative hover:scale-110 transition-transform"
+                              style={{ backgroundColor: color.val }}
+                              title={color.label}
+                            >
+                              {padColor === color.val && (
+                                <span className="absolute inset-0 flex items-center justify-center text-[10px] font-bold text-yellow-500">✓</span>
+                              )}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Target width limit Selector */}
+                    <div className="space-y-1.5">
+                      <label className="text-neutral-300 text-xs font-bold block">Target Image Resolution</label>
+                      <div className="grid grid-cols-3 gap-2 p-1 bg-neutral-900 border border-neutral-850 rounded-xl">
+                        {[
+                          { label: 'HD 1600px', val: 1600 },
+                          { label: 'Standard 1200px', val: 1200 },
+                          { label: 'Mobile 800px', val: 800 },
+                        ].map((item) => (
+                          <button
+                            key={item.val}
+                            type="button"
+                            onClick={() => setTargetWidth(item.val)}
+                            className={`py-2 text-center rounded-lg text-[10px] font-black transition-all ${
+                              targetWidth === item.val
+                                ? 'bg-yellow-500 text-black shadow-sm'
+                                : 'bg-transparent text-neutral-400 hover:text-neutral-250 hover:bg-neutral-850'
+                            }`}
+                          >
+                            {item.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Image compression Quality Slider */}
+                    <div className="space-y-1.5 border-t border-neutral-850 pt-4">
+                      <div className="flex justify-between items-center text-xs">
+                        <label className="text-neutral-300 font-bold">JPEG Compression Quality</label>
+                        <span className="text-green-555 text-green-500 font-black">{Math.round(compressQuality * 100)}%</span>
+                      </div>
+                      <input
+                        type="range"
+                        min="0.3"
+                        max="1.0"
+                        step="0.05"
+                        value={compressQuality}
+                        onChange={(e) => setCompressQuality(parseFloat(e.target.value))}
+                        className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-yellow-500"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Footer Actions */}
+                <div className="flex gap-3 border-t border-neutral-850 pt-4">
+                  <button
+                    type="button"
+                    onClick={handleOptimizedUpload}
+                    disabled={uploadingImage || !compressedBlob}
+                    className="flex-1 bg-yellow-500 hover:bg-yellow-400 text-black font-extrabold py-3.5 rounded-2xl transition-colors text-sm flex items-center justify-center gap-2 disabled:opacity-50"
+                  >
+                    {uploadingImage ? (
+                      <><FiLoader className="animate-spin" size={16} />Compressing & Saving...</>
+                    ) : (
+                      <><FiCheck size={16} />Commit & Inject Optimized Banner</>
+                    )}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setCompressingFile(null)}
+                    className="flex-1 bg-neutral-900 border border-neutral-800 hover:bg-neutral-850 hover:border-neutral-700 text-neutral-400 hover:text-white font-bold py-3.5 rounded-2xl transition-all text-sm"
+                  >
+                    Cancel Crop
+                  </button>
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
       </motion.div>
     </motion.div>
   );

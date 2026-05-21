@@ -53,6 +53,12 @@ exports.createOrder = async (req, res) => {
         const validity = coupon.isValid(subtotal, req.user._id);
         if (validity.valid) {
           couponDiscount = coupon.calculateDiscount(orderItems, subtotal);
+          if (couponDiscount === 0) {
+            return res.status(400).json({
+              success: false,
+              message: 'This coupon is not applicable for this product category'
+            });
+          }
           couponData = { code: coupon.code, discount: couponDiscount };
           // If coupon has scheduling limits, we treat it as flat/flash delivery override
           if (coupon.validUntil || coupon.expiresAt) {
@@ -68,6 +74,12 @@ exports.createOrder = async (req, res) => {
           const validity = flashVoucher.isValid(req.user._id, subtotal);
           if (validity.valid) {
             couponDiscount = flashVoucher.calculateDiscount(orderItems, subtotal);
+            if (couponDiscount === 0) {
+              return res.status(400).json({
+                success: false,
+                message: 'This coupon is not applicable for this product category'
+              });
+            }
             couponData = { code: flashVoucher.code, discount: couponDiscount };
             isFlashVoucherApplied = true;
             flashVoucherInstance = flashVoucher;
@@ -80,15 +92,28 @@ exports.createOrder = async (req, res) => {
       }
     }
 
-    // Calculate shipping and tax (Voucher billing formula)
+    // Calculate shipping and tax based on settings
+    const Settings = require('../models/Settings');
+    let settings = await Settings.findOne();
+    if (!settings) {
+      settings = await Settings.create({});
+    }
+
     let shipping = 99;
     if (isFlashVoucherApplied) {
       shipping = 65; // Requested Delivery = ₹65
-    } else if (subtotal > 999) {
-      shipping = 0;
     }
 
-    const tax = Math.round((subtotal - couponDiscount) * 0.05); // GST 5%
+    const normalizedCity = (shippingAddress.city || '').trim().toLowerCase();
+    const isEligibleLocation = settings.freeDeliveryLocations.some(
+      loc => loc.trim().toLowerCase() === normalizedCity
+    );
+
+    if (isEligibleLocation && subtotal >= settings.freeDeliveryThreshold) {
+      shipping = 0; // Free delivery only for these certain places if threshold is met
+    }
+
+    const tax = Math.round(subtotal * 0.05); // GST 5% on original products price (not reduced by voucher discount)
     const total = subtotal - couponDiscount + shipping + tax;
 
     const order = await Order.create({

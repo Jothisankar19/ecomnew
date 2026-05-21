@@ -11,6 +11,8 @@ import { logoutUser } from '../../store/slices/authSlice';
 import { selectCartCount } from '../../store/slices/cartSlice';
 import { fetchCategories } from '../../store/slices/categorySlice';
 
+
+
 const HARDCODED_CATEGORIES = [
   // By Type
   { name: '— By Type —', slug: null, isHeader: true },
@@ -106,9 +108,9 @@ const Navbar = () => {
 
             {/* Categories Dropdown */}
             <div className="relative" onMouseEnter={() => setCategoriesOpen(true)} onMouseLeave={() => setCategoriesOpen(false)}>
-              <button className="nav-link flex items-center gap-1">
+              <Link to="/categories" className="nav-link flex items-center gap-1">
                 Collections <FiChevronDown size={14} className={`transition-transform ${categoriesOpen ? 'rotate-180' : ''}`} />
-              </button>
+              </Link>
               <AnimatePresence>
                 {categoriesOpen && (
                   <motion.div
@@ -132,6 +134,13 @@ const Navbar = () => {
                         </Link>
                       )
                     )}
+                    <div className="border-t border-gray-100 my-1"></div>
+                    <Link
+                      to="/categories"
+                      className="block px-4 py-2.5 text-sm font-bold text-yellow-600 hover:bg-yellow-50 transition-colors"
+                    >
+                      View All Collections →
+                    </Link>
                   </motion.div>
                 )}
               </AnimatePresence>
@@ -308,6 +317,7 @@ const Navbar = () => {
                     { label: 'New Arrivals', to: '/products?isNewArrival=true', icon: '✨' },
                     { label: 'Trending Now', to: '/products?isTrending=true', icon: '🔥' },
                     { label: 'Shop All', to: '/products', icon: '🛍️' },
+                    { label: 'Collections', to: '/categories', icon: '📁' },
                     { label: 'About Us', to: '/about', icon: '📖' },
                   ].map((item) => (
                     <Link

@@ -5,6 +5,7 @@ import { Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import api from '../utils/api';
 import toast from 'react-hot-toast';
+import ProductCard from '../components/product/ProductCard';
 
 // Dynamic Countdown Clock Component
 const CountdownClock = ({ endTime, onExpire }) => {
@@ -46,22 +47,34 @@ const CountdownClock = ({ endTime, onExpire }) => {
 
 const FlashSalesPage = () => {
   const [activeVouchers, setActiveVouchers] = useState([]);
+  const [discountedProducts, setDiscountedProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [copiedCode, setCopiedCode] = useState(null);
 
-  const fetchVouchers = async () => {
+  const fetchDeals = async () => {
     setLoading(true);
     try {
-      const { data } = await api.get('/flash-sales/active');
-      setActiveVouchers(data.vouchers || []);
+      const [vouchersRes, productsRes] = await Promise.all([
+        api.get('/flash-sales/active').catch(() => ({ data: { vouchers: [] } })),
+        api.get('/products?hasDiscount=true&limit=12').catch(() => ({ data: { products: [] } }))
+      ]);
+      setActiveVouchers(vouchersRes.data?.vouchers || []);
+      
+      let products = productsRes.data?.products || [];
+      // Fallback: If no products have an explicit discount, fetch trending/featured products so the page is never empty!
+      if (products.length === 0) {
+        const featuredRes = await api.get('/products/featured').catch(() => ({ data: {} }));
+        products = featuredRes.data?.trending || featuredRes.data?.featured || [];
+      }
+      setDiscountedProducts(products);
     } catch (err) {
-      console.warn('Could not fetch active flash sale vouchers', err);
+      console.warn('Could not fetch flash deals', err);
     }
     setLoading(false);
   };
 
   useEffect(() => {
-    fetchVouchers();
+    fetchDeals();
     window.scrollTo(0, 0);
   }, []);
 
@@ -111,7 +124,7 @@ const FlashSalesPage = () => {
                 <div key={i} className="h-64 bg-white rounded-3xl skeleton border border-gray-100 shadow-sm" />
               ))}
             </div>
-          ) : activeVouchers.length === 0 ? (
+          ) : activeVouchers.length === 0 && discountedProducts.length === 0 ? (
             <div className="bg-white rounded-3xl p-16 text-center border border-gray-100 shadow-sm max-w-3xl mx-auto">
               <div className="w-24 h-24 bg-gray-50 text-gray-300 rounded-full flex items-center justify-center mx-auto mb-6">
                 <FiZap size={40} className="text-yellow-500/80 animate-pulse" />
@@ -125,9 +138,12 @@ const FlashSalesPage = () => {
               </Link>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              <AnimatePresence>
-                {activeVouchers.map((voucher) => {
+            <div className="space-y-16">
+              {/* Active Campaigns */}
+              {activeVouchers.length > 0 && (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                  <AnimatePresence>
+                    {activeVouchers.map((voucher) => {
                   const claimPercentage = Math.round(((voucher.stockClaimed || 0) / voucher.totalStock) * 100);
                   const itemsLeft = Math.max(0, voucher.totalStock - (voucher.stockClaimed || 0));
 
@@ -162,7 +178,7 @@ const FlashSalesPage = () => {
                       {/* Timer Banner */}
                       <div className="bg-gradient-to-r from-gray-900 to-gray-800 rounded-2xl p-4 flex items-center justify-between shadow-inner">
                         <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Ends In</span>
-                        <CountdownClock endTime={voucher.endTime} onExpire={fetchVouchers} />
+                        <CountdownClock endTime={voucher.endTime} onExpire={fetchDeals} />
                       </div>
 
                       {/* Stock Quota Slider */}
@@ -184,7 +200,7 @@ const FlashSalesPage = () => {
                       </div>
 
                       {/* Pricing Details Row */}
-                      <div className="flex items-center justify-between border-t border-gray-100 pt-5 mt-2">
+                      <div className="flex items-center justify-between border-t border-gray-100 pt-5 mt-2 mb-4">
                         <div>
                           <span className="text-[10px] text-gray-400 font-bold uppercase tracking-widest block mb-1">Savings Value</span>
                           <span className="text-yellow-600 font-black text-2xl">
@@ -203,13 +219,50 @@ const FlashSalesPage = () => {
                           })()}
                           className="h-12 px-5 bg-gray-900 hover:bg-black text-white font-bold text-xs uppercase tracking-wider rounded-xl flex items-center justify-center gap-2 shadow-md hover:shadow-lg transition-all"
                         >
-                          <FiShoppingBag size={14} /> Shop Now
+                          <FiShoppingBag size={14} /> Shop Category
                         </Link>
                       </div>
+                      
+                      {/* Applicable Products Preview */}
+                      {voucher.applicableProducts && voucher.applicableProducts.length > 0 && (
+                        <div className="mt-4 pt-4 border-t border-gray-100">
+                           <h5 className="text-xs font-bold text-gray-800 uppercase tracking-widest mb-4 flex items-center gap-2">
+                             <FiZap className="text-yellow-500" /> Products on Sale
+                           </h5>
+                           <div className="flex overflow-x-auto gap-4 pb-4 no-scrollbar">
+                             {voucher.applicableProducts.map(product => (
+                               <div key={product._id} className="w-[200px] flex-shrink-0">
+                                 <ProductCard product={product} />
+                               </div>
+                             ))}
+                           </div>
+                        </div>
+                      )}
                     </motion.div>
                   );
-                })}
-              </AnimatePresence>
+                    })}
+                  </AnimatePresence>
+                </div>
+              )}
+
+              {/* General Discounted Products */}
+              {discountedProducts.length > 0 && (
+                <div>
+                  <div className="flex items-center justify-between mb-8">
+                    <h2 className="font-serif text-3xl font-bold text-gray-900 flex items-center gap-3">
+                      <FiZap className="text-yellow-500" /> Deals & Discounts
+                    </h2>
+                    <Link to="/products?hasDiscount=true" className="text-sm font-bold text-yellow-600 hover:text-yellow-700 flex items-center gap-1">
+                      View All <FiChevronRight />
+                    </Link>
+                  </div>
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
+                    {discountedProducts.map(product => (
+                      <ProductCard key={product._id} product={product} />
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>

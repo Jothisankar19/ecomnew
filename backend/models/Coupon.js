@@ -126,6 +126,12 @@ couponSchema.methods.isValid = function(orderAmount, userId) {
 
 // Calculate targeted category-restricted or product-restricted price reduction
 couponSchema.methods.calculateDiscount = function(cartItems = [], orderAmount = 0) {
+  // Gracefully handle backward compatibility when called with a single argument: calculateDiscount(orderAmount)
+  if (typeof cartItems === 'number') {
+    orderAmount = cartItems;
+    cartItems = [];
+  }
+
   let discount = 0;
   
   const hasCategoryRestriction = this.applicableCategories && this.applicableCategories.length > 0;
@@ -159,7 +165,7 @@ couponSchema.methods.calculateDiscount = function(cartItems = [], orderAmount = 
   } else {
     discount = this.discountValue;
   }
-  return Math.min(discount, orderAmount);
+  return Math.min(discount, eligibleAmount);
 };
 
 module.exports = mongoose.model('Coupon', couponSchema);

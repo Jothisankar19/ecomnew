@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import Seo from '../components/ui/Seo';
 import { FiHeart, FiAward, FiCompass, FiShield, FiUsers } from 'react-icons/fi';
 import { Link } from 'react-router-dom';
-
+import aboutImg from '../assets/sample/about us.jpg';
 // Inline ScrollStitchDivider for visually sewing the about sections together
 const ScrollStitchDivider = ({ text = "Crafting Heritage" }) => {
   const containerRef = useRef(null);
@@ -126,7 +126,7 @@ const AboutPage = () => {
             >
               <div className="relative overflow-hidden rounded-3xl aspect-[4/5] shadow-2xl border border-gray-100">
                 <img 
-                  src="https://images.unsplash.com/photo-1544441893-675973e31985?w=800&q=80" 
+                  src={aboutImg} 
                   alt="Tailoring craftsmanship spools and handloom fabric details" 
                   className="w-full h-full object-cover"
                 />

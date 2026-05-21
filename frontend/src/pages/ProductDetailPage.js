@@ -315,6 +315,7 @@ const ProductDetailPage = () => {
                       animate={{ opacity: 1 }}
                       src={images[selectedImage]?.url || 'https://via.placeholder.com/600x800?text=No+Image'}
                       alt={product.name}
+                      decoding="async"
                       style={{ ...zoomStyle, transition: zoomStyle.transform === 'scale(1)' ? 'transform 0.3s ease' : 'none' }}
                       className="w-full h-full object-cover"
                     />
@@ -373,7 +374,7 @@ const ProductDetailPage = () => {
                           i === selectedImage ? 'border-yellow-500 shadow-yellow-200' : 'border-transparent opacity-70 hover:opacity-100'
                         }`}
                       >
-                        <img src={img.url} alt="" className="w-full h-full object-cover" />
+                        <img src={img.url} alt="" loading="lazy" decoding="async" className="w-full h-full object-cover" />
                       </button>
                     ))}
                   </div>
