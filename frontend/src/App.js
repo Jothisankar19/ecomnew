@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, Suspense, lazy } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
+import { SpeedInsights } from '@vercel/speed-insights/react';
 import { getMe } from './store/slices/authSlice';
 import { fetchCart } from './store/slices/cartSlice';
 import { fetchWishlist } from './store/slices/wishlistSlice';
@@ -116,6 +117,7 @@ function App() {
           <Route path="*" element={<NotFoundPage />} />
         </Routes>
       </Suspense>
+      <SpeedInsights />
     </Router>
   )
 }
