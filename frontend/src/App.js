@@ -8,6 +8,7 @@ import Layout from './components/layout/Layout';
 import LoadingScreen from './components/ui/LoadingScreen';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import AdminRoute from './components/auth/AdminRoute';
+import { SpeedInsights } from '@vercel/speed-insights/react';
 
 // ── Lazy load pages ───────────────────────────────────────────
 const HomePage          = lazy(() => import('./pages/HomePage'));
@@ -68,6 +69,7 @@ function App() {
 
   return (
     <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+      <SpeedInsights />
       <Suspense fallback={<LoadingScreen />}>
         <Routes>
           {/* ── Public routes with layout ── */}
