@@ -88,8 +88,8 @@ const productSchema = new mongoose.Schema({
   weight: Number,
   dimensions: {
     length: Number,
-    width: Number,
-    height: Number
+    'inline-size': Number,
+    'block-size': Number
   },
   deliveryFee: { type: Number, default: 0 },
   gstRate: { type: Number, default: 5 },

@@ -83,17 +83,21 @@ const HeroSection = () => {
       .finally(() => setLoading(false))
   }, [])
 
-  const slides = dbSlides.length > 0 ? dbSlides.map(s => ({
-    id: s._id,
-    image: s.image?.url || img1,
-    subtitle: s.subtitle,
-    title: s.title,
-    highlight: s.highlight,
-    badge: s.badge,
-    cta: s.cta || 'Shop Now',
-    link: s.link || '/products',
-    textPosition: s.textPosition || 'center'
-  })) : DEFAULT_SLIDES
+  const slides = dbSlides.length > 0 ? dbSlides.map(s => {
+    // Generate link based on categoryId
+    const link = s.categoryId?.slug ? `/category/${s.categoryId.slug}` : (s.categoryId?._id ? `/products?category=${s.categoryId._id}` : '/products')
+    return {
+      id: s._id,
+      image: s.image?.url || img1,
+      subtitle: s.subtitle,
+      title: s.title,
+      highlight: s.highlight,
+      badge: s.badge,
+      cta: s.cta || 'Shop Now',
+      link,
+      textPosition: s.textPosition || 'center'
+    }
+  }) : DEFAULT_SLIDES
 
   // Reset index if slides list changes (e.g. database banners loaded) to prevent out of bounds
   useEffect(() => {
@@ -130,7 +134,7 @@ const HeroSection = () => {
     return (
       <div
         className="w-full overflow-hidden aspect-[4/3] sm:aspect-[16/9] md:aspect-[2.2/1] lg:aspect-[2.4/1] bg-[#111111] flex items-center justify-center relative select-none"
-        style={{ minHeight: '340px', maxHeight: '550px' }}
+        style={{ minBlockSize: '340px', maxBlockSize: '550px' }}
       >
         {/* Dynamic pulsing shimmer backdrop */}
         <div className="absolute inset-0 bg-gradient-to-r from-neutral-900 via-neutral-850 to-neutral-900 animate-pulse opacity-85" />
@@ -148,7 +152,7 @@ const HeroSection = () => {
   return (
     <section
       className="relative w-full overflow-hidden aspect-[4/3] sm:aspect-[16/9] md:aspect-[2.2/1] lg:aspect-[2.4/1]"
-      style={{ minHeight: '340px', maxHeight: '550px' }}
+      style={{ minBlockSize: '340px', maxBlockSize: '550px' }}
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
     >

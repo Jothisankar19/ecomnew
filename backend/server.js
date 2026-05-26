@@ -133,14 +133,82 @@ const connectDB = async () => {
 
 const { initCronJobs } = require('./utils/cronJobs');
 
-connectDB().then(() => {
-  const PORT = process.env.PORT || 5000;
-  app.listen(PORT, () => {
+const { exec } = require('child_process');
+
+const killPortProcess = (port) => {
+  return new Promise((resolve) => {
+    if (process.platform === 'win32') {
+      exec(`netstat -ano | findstr :${port}`, (err, stdout) => {
+        if (err || !stdout) return resolve();
+        const lines = stdout.split('\n');
+        const pids = new Set();
+        lines.forEach(line => {
+          const parts = line.trim().split(/\s+/);
+          if (parts.length >= 5) {
+            const localAddress = parts[1];
+            if (localAddress.endsWith(`:${port}`) || localAddress.endsWith(`.${port}`)) {
+              const pid = parts[parts.length - 1];
+              if (parseInt(pid) > 0) {
+                pids.add(pid);
+              }
+            }
+          }
+        });
+        if (pids.size === 0) return resolve();
+        let killedCount = 0;
+        pids.forEach(pid => {
+          exec(`taskkill /F /PID ${pid}`, () => {
+            killedCount++;
+            if (killedCount === pids.size) {
+              setTimeout(resolve, 1000); // 1s buffer for OS socket release
+            }
+          });
+        });
+      });
+    } else {
+      exec(`lsof -t -i:${port}`, (err, stdout) => {
+        if (err || !stdout) {
+          exec(`fuser -k ${port}/tcp`, () => setTimeout(resolve, 1000));
+          return;
+        }
+        const pids = stdout.trim().split('\n');
+        let killedCount = 0;
+        pids.forEach(pid => {
+          exec(`kill -9 ${pid}`, () => {
+            killedCount++;
+            if (killedCount === pids.size) {
+              setTimeout(resolve, 1000);
+            }
+          });
+        });
+      });
+    }
+  });
+};
+
+const startServer = (PORT) => {
+  const server = app.listen(PORT, () => {
     console.log(`🚀 Server running on port ${PORT}`);
     console.log(`📱 API: http://localhost:${PORT}/api`);
     console.log(`🔑 Admin: http://localhost:3000/admin/login`);
     initCronJobs();
   });
+
+  server.on('error', async (err) => {
+    if (err.code === 'EADDRINUSE') {
+      console.log(`⚠️ Port ${PORT} is in use. Attempting to free the port...`);
+      await killPortProcess(PORT);
+      console.log(`✅ Port ${PORT} freed. Restarting server...`);
+      startServer(PORT);
+    } else {
+      console.error('Server error:', err);
+    }
+  });
+};
+
+connectDB().then(() => {
+  const PORT = process.env.PORT || 5000;
+  startServer(PORT);
 });
 
 module.exports = app;

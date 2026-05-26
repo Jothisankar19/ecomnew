@@ -5,6 +5,8 @@ import { FiPlus, FiEdit2, FiTrash2, FiX, FiImage, FiUpload, FiLoader, FiCheck, F
 import api from '../../utils/api'
 import AdminLayout from '../../components/layout/AdminLayout'
 import toast from 'react-hot-toast'
+import { useSelector, useDispatch } from 'react-redux'
+import { fetchCategories } from '../../store/slices/categorySlice'
 
 const inputCls = 'w-full bg-white border border-gray-200 rounded-xl px-4 py-2.5 text-gray-800 placeholder-gray-400 text-sm focus:outline-none focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20 transition-all'
 
@@ -54,13 +56,14 @@ const SlideImageUploader = ({ currentImage, onUpload, uploading }) => {
 // ── Slide Modal ───────────────────────────────────────────────
 // ── Slide Modal ───────────────────────────────────────────────
 const SlideModal = ({ slide, onClose, onSave }) => {
+  const { categories } = useSelector(state => state.categories)
   const [form, setForm] = useState({
     subtitle: slide?.subtitle || '',
     title: slide?.title || '',
     highlight: slide?.highlight || '',
     badge: slide?.badge || '',
     cta: slide?.cta || 'Shop Now',
-    link: slide?.link || '/products',
+    categoryId: slide?.categoryId?._id || slide?.categoryId || '',
     textPosition: slide?.textPosition || 'center',
     active: slide?.active !== false,
     order: slide?.order || 0,
@@ -303,15 +306,30 @@ const SlideModal = ({ slide, onClose, onSave }) => {
               </div>
             </div>
 
-            {/* Call to Action Text & Link */}
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1.5">Button text (CTA)</label>
-                <input value={form.cta} onChange={e => setForm({ ...form, cta: e.target.value })} className={inputCls} placeholder="e.g. Explore Now" />
-              </div>
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1.5">Button Link Route</label>
-                <input value={form.link} onChange={e => setForm({ ...form, link: e.target.value })} className={inputCls} placeholder="e.g. /category/anarkali-kurtis" />
+            {/* Call to Action Text */}
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-1.5">Button text (CTA)</label>
+              <input value={form.cta} onChange={e => setForm({ ...form, cta: e.target.value })} className={inputCls} placeholder="e.g. Explore Now" />
+            </div>
+
+            {/* Category Selection */}
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-1.5">Select Category <span className="text-red-500">*</span></label>
+              <div className="flex flex-wrap gap-2">
+                {categories?.map(cat => (
+                  <button
+                    key={cat._id}
+                    type="button"
+                    onClick={() => setForm({ ...form, categoryId: form.categoryId === cat._id ? '' : cat._id })}
+                    className={`px-4 py-2 rounded-full text-xs font-semibold transition-all border ${
+                      form.categoryId === cat._id
+                        ? 'bg-yellow-500 text-white border-yellow-500 shadow-md shadow-yellow-500/20'
+                        : 'bg-white text-gray-600 border-gray-200 hover:border-yellow-400 hover:bg-yellow-50'
+                    }`}
+                  >
+                    {cat.name}
+                  </button>
+                ))}
               </div>
             </div>
 
@@ -668,12 +686,336 @@ const SlideModal = ({ slide, onClose, onSave }) => {
   )
 }
 
-// ── Admin Banners Dashboard Page ──────────────────────────────
+// ── Promo & Occasion Banners Management ────────────────────────
+const GenericBannersManager = ({ type }) => {
+  const isPromo = type === 'promo';
+  const { categories } = useSelector(state => state.categories)
+  const [banners, setBanners] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [savingIndex, setSavingIndex] = useState(null);
+  const [uploadingImageIndex, setUploadingImageIndex] = useState(null);
+
+  // Always keep a ref to the latest banners so save never reads stale data
+  const bannersRef = useRef(banners);
+  useEffect(() => { bannersRef.current = banners; }, [banners]);
+
+  useEffect(() => {
+    api.get('/settings').then(({ data }) => {
+      const dbBanners = isPromo ? data.settings?.promoBanners : data.settings?.occasionBanners;
+
+      // Normalize saved banners so categoryId is always a string id (not a populated object)
+      const normalized = (dbBanners || []).map(b => ({
+        ...b,
+        categoryId: b?.categoryId?._id || b?.categoryId || ''
+      }));
+
+      // Initialize with normalized if exists, else fallback to 3 empty template slots
+      let initial = [];
+      if (normalized && normalized.length > 0) {
+        initial = normalized;
+      } else {
+        initial = Array(3).fill(null).map(() => (
+          isPromo 
+            ? { img: null, tag: '', title: '', cta: '', categoryId: '' }
+            : { img: null, badge: '', name: '', subtitle: '', desc: '', categoryId: '' }
+        ));
+      }
+      setBanners(initial);
+      setLoading(false);
+    });
+  }, [type]);
+
+  const handleChange = (index, field, value) => {
+    setBanners(prev => {
+      const newBanners = [...prev];
+      newBanners[index] = { ...newBanners[index], [field]: value };
+      return newBanners;
+    });
+  };
+
+  const handleImageUpload = async (e, index) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploadingImageIndex(index);
+    try {
+      const fd = new FormData();
+      fd.append('files', file);
+      fd.append('folder', 'ethnic-elegance/banners');
+
+      const { data } = await api.post('/upload', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+      handleChange(index, 'img', { url: data.files[0].url, public_id: data.files[0].public_id });
+      toast.success('Image uploaded!');
+    } catch (err) {
+      toast.error('Image upload failed');
+    }
+    setUploadingImageIndex(null);
+  };
+
+  const handleAddBanner = () => {
+    setBanners(prev => [
+      ...prev,
+      isPromo 
+        ? { img: null, tag: '', title: '', cta: '', categoryId: '' }
+        : { img: null, badge: '', name: '', subtitle: '', desc: '', categoryId: '' }
+    ]);
+    toast.success('New banner card added at the bottom!');
+  };
+
+  const persistBanners = async (successMessage) => {
+    setSaving(true);
+    try {
+      const latestBanners = bannersRef.current;
+      const cleaned = latestBanners.map(b => ({
+        ...b,
+        categoryId: b.categoryId === '' ? null : b.categoryId
+      }));
+      const payload = isPromo ? { promoBanners: cleaned } : { occasionBanners: cleaned };
+      await api.put('/settings', payload);
+      setBanners(latestBanners);
+      if (successMessage) toast.success(successMessage);
+    } catch (err) {
+      toast.error('Failed to save banners settings');
+      throw err;
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDeleteBanner = async (index) => {
+    if (!window.confirm('Are you sure you want to remove this banner card?')) return;
+    const next = bannersRef.current.filter((_, i) => i !== index);
+    setBanners(next);
+    bannersRef.current = next;
+    try {
+      await persistBanners('Banner card removed!');
+    } catch {
+      /* toast shown in persistBanners */
+    }
+  };
+
+  const handleMoveBanner = async (index, direction) => {
+    const targetIndex = index + direction;
+    if (targetIndex < 0 || targetIndex >= banners.length) return;
+    const copy = [...bannersRef.current];
+    const temp = copy[index];
+    copy[index] = copy[targetIndex];
+    copy[targetIndex] = temp;
+    setBanners(copy);
+    bannersRef.current = copy;
+    try {
+      await persistBanners('Banner order updated!');
+    } catch {
+      /* toast shown in persistBanners */
+    }
+  };
+
+  const handleSaveSingle = async (index) => {
+    setSavingIndex(index);
+    try {
+      await persistBanners(`${isPromo ? 'Promo' : 'Occasion'} Banner #${index + 1} updated successfully!`);
+    } catch {
+      toast.error(`Failed to update Banner #${index + 1}`);
+    }
+    setSavingIndex(null);
+  };
+
+  const getCardLabel = (index) => {
+    const base = isPromo ? 'Promo Banner' : 'Occasion Banner';
+    if (index === 0) return `${base} 1 — Left Card`;
+    if (index === 1) return `${base} 2 — Center Card`;
+    if (index === 2) return `${base} 3 — Right Card`;
+    return `${base} ${index + 1}`;
+  };
+
+  if (loading) return <div className="p-8 text-center"><FiLoader className="animate-spin mx-auto text-yellow-500" size={24} /></div>;
+
+  return (
+    <div className="space-y-6">
+      {/* Dynamic Header Toolbar */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-6 bg-gradient-to-br from-amber-500/10 to-yellow-500/5 rounded-3xl border border-yellow-500/10 backdrop-blur-sm shadow-sm">
+        <div>
+          <h3 className="text-gray-800 font-extrabold text-base flex items-center gap-2">
+            <span className="w-2.5 h-2.5 rounded-full bg-yellow-500 animate-pulse" />
+            {isPromo ? 'Promo Banners Layout' : 'Occasion Banners Layout'}
+          </h3>
+          <p className="text-gray-400 text-xs mt-0.5">
+            Currently managing {banners.length} dynamic banner {banners.length === 1 ? 'card' : 'cards'}
+          </p>
+        </div>
+        <button
+          onClick={handleAddBanner}
+          disabled={saving}
+          className="flex items-center gap-1.5 bg-white border border-gray-200 hover:border-yellow-400 text-gray-700 font-bold text-xs px-4 py-2.5 rounded-xl shadow-sm hover:shadow transition-all disabled:opacity-60"
+        >
+          <FiPlus size={14} className="text-yellow-600" /> Add Banner Card
+        </button>
+      </div>
+
+      {/* Cards list with beautiful Framer Motion drag/layout animations */}
+      <div className="space-y-6">
+        <AnimatePresence initial={false}>
+          {banners.map((banner, i) => {
+            const isUploading = uploadingImageIndex === i;
+            const hasImage = !!(typeof banner.img === 'string' ? banner.img : banner.img?.url);
+
+            return (
+              <motion.div
+                key={i}
+                layout
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                transition={{ duration: 0.35, ease: 'easeInOut' }}
+                className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden"
+              >
+                {/* Card Header */}
+                <div className="flex items-center justify-between px-6 py-4 bg-gray-50/80 border-b border-gray-100">
+                  <div className="flex items-center gap-3">
+                    <span className="w-8 h-8 rounded-xl bg-yellow-100 text-yellow-600 flex items-center justify-center text-sm font-bold">{i + 1}</span>
+                    <div>
+                      <h4 className="text-sm font-bold text-gray-800">{getCardLabel(i)}</h4>
+                      <p className="text-xs text-gray-400">{hasImage ? '✓ Image uploaded' : '⚠ No image yet'}</p>
+                    </div>
+                  </div>
+                  
+                  {/* Card Header Controls */}
+                  <div className="flex items-center gap-3">
+                    {/* Reorder Arrows */}
+                    <div className="flex border border-gray-200 bg-white rounded-xl overflow-hidden shadow-sm">
+                      <button
+                        onClick={() => handleMoveBanner(i, -1)}
+                        disabled={i === 0 || saving}
+                        className="p-2 text-gray-500 hover:bg-gray-50 active:bg-gray-100 disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
+                        title="Move Banner Up"
+                      >
+                        <FiArrowUp size={14} />
+                      </button>
+                      <div className="w-[1px] bg-gray-100" />
+                      <button
+                        onClick={() => handleMoveBanner(i, 1)}
+                        disabled={i === banners.length - 1 || saving}
+                        className="p-2 text-gray-500 hover:bg-gray-50 active:bg-gray-100 disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
+                        title="Move Banner Down"
+                      >
+                        <FiArrowDown size={14} />
+                      </button>
+                    </div>
+
+                    {/* Save / Update Card Button */}
+                    <button
+                      onClick={() => handleSaveSingle(i)}
+                      disabled={saving || savingIndex === i || isUploading}
+                      className={`flex items-center gap-1.5 text-xs font-bold px-4 py-2 rounded-xl transition-all shadow-sm ${
+                        savingIndex === i
+                          ? 'bg-gray-200 text-gray-400 cursor-wait'
+                          : 'bg-yellow-500 hover:bg-yellow-400 text-white shadow-yellow-250/20'
+                      }`}
+                      title="Save / Update Card"
+                    >
+                      {savingIndex === i ? <FiLoader className="animate-spin" size={13} /> : <FiCheck size={13} />}
+                      {savingIndex === i ? 'Updating...' : 'Update Card'}
+                    </button>
+
+                    {/* Delete Card Button */}
+                    <button
+                      onClick={() => handleDeleteBanner(i)}
+                      disabled={saving}
+                      className="w-8.5 h-8.5 flex items-center justify-center rounded-xl bg-red-50 hover:bg-red-100 text-red-500 border border-red-200/40 shadow-sm transition-colors disabled:opacity-40"
+                      title="Remove Banner Card"
+                    >
+                      <FiTrash2 size={14} />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Card Body */}
+                <div className="p-6 flex flex-col md:flex-row gap-6">
+                  <div className="w-full md:w-1/3">
+                    <SlideImageUploader
+                      currentImage={typeof banner.img === 'string' ? banner.img : banner.img?.url}
+                      onUpload={(e) => handleImageUpload(e, i)}
+                      uploading={isUploading}
+                    />
+                  </div>
+                  <div className="flex-1 grid grid-cols-2 gap-4">
+                    {isPromo ? (
+                      <>
+                        <div>
+                          <label className="block text-sm font-semibold text-gray-700 mb-1.5">Tag (e.g. New Arrivals)</label>
+                          <input value={banner.tag || ''} onChange={e => handleChange(i, 'tag', e.target.value)} className={inputCls} />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-semibold text-gray-700 mb-1.5">Title (Multiline supported)</label>
+                          <input value={banner.title || ''} onChange={e => handleChange(i, 'title', e.target.value)} className={inputCls} />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-semibold text-gray-700 mb-1.5">Button Text (CTA)</label>
+                          <input value={banner.cta || ''} onChange={e => handleChange(i, 'cta', e.target.value)} className={inputCls} />
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div>
+                          <label className="block text-sm font-semibold text-gray-700 mb-1.5">Badge (e.g. Daily Staples)</label>
+                          <input value={banner.badge || ''} onChange={e => handleChange(i, 'badge', e.target.value)} className={inputCls} />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-semibold text-gray-700 mb-1.5">Subtitle</label>
+                          <input value={banner.subtitle || ''} onChange={e => handleChange(i, 'subtitle', e.target.value)} className={inputCls} />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-semibold text-gray-700 mb-1.5">Name</label>
+                          <input value={banner.name || ''} onChange={e => handleChange(i, 'name', e.target.value)} className={inputCls} />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-semibold text-gray-700 mb-1.5">Description</label>
+                          <input value={banner.desc || ''} onChange={e => handleChange(i, 'desc', e.target.value)} className={inputCls} />
+                        </div>
+                      </>
+                    )}
+                    <div className="col-span-2">
+                      <label className="block text-sm font-semibold text-gray-700 mb-1.5">Select Category</label>
+                      <div className="flex flex-wrap gap-2">
+                        {(categories || []).map(cat => (
+                          <button
+                            key={cat._id}
+                            type="button"
+                            onClick={() => handleChange(i, 'categoryId', banner.categoryId === cat._id ? '' : cat._id)}
+                            className={`px-4 py-2 rounded-full text-xs font-semibold transition-all border ${
+                              banner.categoryId === cat._id
+                                ? 'bg-yellow-500 text-white border-yellow-500 shadow-md shadow-yellow-500/20'
+                                : 'bg-white text-gray-600 border-gray-200 hover:border-yellow-400 hover:bg-yellow-50'
+                            }`}
+                          >
+                            {cat.name}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            );
+          })}
+        </AnimatePresence>
+      </div>
+    </div>
+  );
+};
+
+const PromoBannersManager = () => <GenericBannersManager type="promo" />;
+const OccasionBannersManager = () => <GenericBannersManager type="occasion" />;
+
+
 const AdminBanners = () => {
+  const [activeTab, setActiveTab] = useState('hero')
   const [slides, setSlides] = useState([])
   const [loading, setLoading] = useState(true)
   const [modalSlide, setModalSlide] = useState(null)
   const [showModal, setShowModal] = useState(false)
+  const dispatch = useDispatch()
 
   const fetchSlides = () => {
     setLoading(true)
@@ -690,6 +1032,7 @@ const AdminBanners = () => {
 
   useEffect(() => {
     fetchSlides()
+    dispatch(fetchCategories())
   }, [])
 
   const handleDelete = async (id) => {
@@ -753,16 +1096,38 @@ const AdminBanners = () => {
 
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-800">Homepage Banners</h1>
-          <p className="text-gray-400 text-sm">{slides.length} dynamic slider layouts configured</p>
+          <h1 className="text-2xl font-bold text-gray-800">Homepage Sections</h1>
+          <p className="text-gray-400 text-sm">Customize the homepage layout and banners</p>
         </div>
-        <button onClick={() => { setModalSlide(null); setShowModal(true) }}
-          className="flex items-center gap-2 bg-yellow-500 hover:bg-yellow-400 text-white font-bold text-sm px-5 py-2.5 rounded-xl transition-colors shadow-sm shadow-yellow-200">
-          <FiPlus size={16} /> Add Hero Banner
-        </button>
+        {activeTab === 'hero' && (
+          <button onClick={() => { setModalSlide(null); setShowModal(true) }}
+            className="flex items-center gap-2 bg-yellow-500 hover:bg-yellow-400 text-white font-bold text-sm px-5 py-2.5 rounded-xl transition-colors shadow-sm shadow-yellow-200">
+            <FiPlus size={16} /> Add Hero Banner
+          </button>
+        )}
       </div>
 
-      {loading ? (
+      <div className="flex gap-4 mb-8 border-b border-gray-100 pb-2">
+        {[
+          { id: 'hero', label: 'Hero Slider' },
+          { id: 'promo', label: 'Promo Banners' },
+          { id: 'occasion', label: 'Occasion Banners' }
+        ].map((tab) => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id)}
+            className={`font-bold text-sm px-4 py-2 rounded-lg transition-colors ${
+              activeTab === tab.id ? 'bg-yellow-100 text-yellow-700' : 'text-gray-500 hover:bg-gray-50'
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {activeTab === 'hero' && (
+        <>
+          {loading ? (
         <div className="space-y-4">
           {[...Array(3)].map((_, i) => (
             <div key={i} className="h-44 bg-gray-100 rounded-3xl animate-pulse" />
@@ -870,6 +1235,11 @@ const AdminBanners = () => {
           ))}
         </div>
       )}
+      </>
+    )}
+
+      {activeTab === 'promo' && <PromoBannersManager />}
+      {activeTab === 'occasion' && <OccasionBannersManager />}
 
       <AnimatePresence>
         {showModal && (

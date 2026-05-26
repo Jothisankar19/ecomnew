@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import {
   FiGrid, FiPackage, FiShoppingBag, FiUsers, FiTag,
   FiPercent, FiBarChart2, FiLogOut, FiMenu, FiX, FiHome,
-  FiBell, FiChevronRight, FiSettings, FiImage
+  FiBell, FiChevronRight, FiSettings, FiImage, FiTarget
 } from 'react-icons/fi'
 import { logoutUser } from '../../store/slices/authSlice'
 
@@ -18,6 +18,7 @@ const navItems = [
   { path: '/admin/banners', label: 'Hero Banners', icon: FiImage, color: 'text-cyan-600', bg: 'bg-cyan-50' },
   { path: '/admin/coupons', label: 'Coupons', icon: FiPercent, color: 'text-yellow-600', bg: 'bg-yellow-50' },
   { path: '/admin/inventory', label: 'Inventory', icon: FiBarChart2, color: 'text-red-600', bg: 'bg-red-50' },
+  { path: '/admin/goals', label: 'Sales Goals', icon: FiTarget, color: 'text-amber-600', bg: 'bg-amber-50' },
   { path: '/admin/settings', label: 'Settings', icon: FiSettings, color: 'text-gray-600', bg: 'bg-gray-50' }
 ]
 

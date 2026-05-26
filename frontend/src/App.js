@@ -5,6 +5,7 @@ import { getMe } from './store/slices/authSlice';
 import { fetchCart } from './store/slices/cartSlice';
 import { fetchWishlist } from './store/slices/wishlistSlice';
 import Layout from './components/layout/Layout';
+import MaintenanceGate from './components/MaintenanceGate';
 import LoadingScreen from './components/ui/LoadingScreen';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import AdminRoute from './components/auth/AdminRoute';
@@ -30,7 +31,6 @@ const SearchPage        = lazy(() => import('./pages/SearchPage'));
 const CategoriesPage    = lazy(() => import('./pages/CategoriesPage'));
 const FlashSalesPage    = lazy(() => import('./pages/FlashSalesPage'));
 const AboutPage         = lazy(() => import('./pages/AboutPage'));
-const NotFoundPage      = lazy(() => import('./pages/NotFoundPage'));
 
 // ── Admin pages ───────────────────────────────────────────────
 const AdminLoginPage  = lazy(() => import('./pages/admin/AdminLoginPage'));
@@ -38,11 +38,13 @@ const AdminDashboard  = lazy(() => import('./pages/admin/AdminDashboard'));
 const AdminProducts   = lazy(() => import('./pages/admin/AdminProducts'));
 const AdminOrders     = lazy(() => import('./pages/admin/AdminOrders'));
 const AdminUsers      = lazy(() => import('./pages/admin/AdminUsers'));
+const AdminUserDetails = lazy(() => import('./pages/admin/AdminUserDetails'));
 const AdminCategories = lazy(() => import('./pages/admin/AdminCategories'));
 const AdminBanners    = lazy(() => import('./pages/admin/AdminBanners'));
 const AdminCoupons    = lazy(() => import('./pages/admin/AdminCoupons'));
 const AdminInventory  = lazy(() => import('./pages/admin/AdminInventory'));
 const AdminSettings   = lazy(() => import('./pages/admin/AdminSettings'));
+const AdminGoals      = lazy(() => import('./pages/admin/AdminGoals'));
 
 function App() {
   const dispatch = useDispatch()
@@ -70,7 +72,8 @@ function App() {
     <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <Suspense fallback={<LoadingScreen />}>
         <Routes>
-          {/* ── Public routes with layout ── */}
+          {/* ── Public routes (maintenance gate) ── */}
+          <Route element={<MaintenanceGate />}>
           <Route path="/" element={<Layout />}>
             <Route index element={<HomePage />} />
             <Route path="products" element={<ProductsPage />} />
@@ -98,6 +101,7 @@ function App() {
             <Route path="orders/:id" element={<ProtectedRoute><OrderDetailPage /></ProtectedRoute>} />
             <Route path="profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
           </Route>
+          </Route>
 
           {/* ── Admin routes ── */}
           <Route path="/admin/login" element={<AdminLoginPage />} />
@@ -106,14 +110,16 @@ function App() {
             <Route path="products" element={<AdminProducts />} />
             <Route path="orders" element={<AdminOrders />} />
             <Route path="users" element={<AdminUsers />} />
+            <Route path="users/:id" element={<AdminUserDetails />} />
             <Route path="categories" element={<AdminCategories />} />
             <Route path="banners" element={<AdminBanners />} />
             <Route path="coupons" element={<AdminCoupons />} />
             <Route path="inventory" element={<AdminInventory />} />
+            <Route path="goals" element={<AdminGoals />} />
             <Route path="settings" element={<AdminSettings />} />
           </Route>
 
-          <Route path="*" element={<NotFoundPage />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Suspense>
     </Router>

@@ -72,7 +72,7 @@ const CategoriesPage = () => {
         name: cat.name,
         slug: cat.slug,
         desc: cat.description || 'Premium Collection',
-        img: cat.image?.url || fallbackImages[i % fallbackImages.length],
+        img: typeof cat.image === 'string' ? cat.image : (cat.image?.url || fallbackImages[i % fallbackImages.length]),
         bg: gradients[i % gradients.length],
         count: '',
       }))

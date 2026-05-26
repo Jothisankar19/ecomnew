@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Helmet } from 'react-helmet-async'
-import { FiSearch, FiUser, FiShield, FiToggleLeft, FiToggleRight, FiPhone, FiTrash2, FiRefreshCw } from 'react-icons/fi'
+import { FiSearch, FiUser, FiShield, FiToggleLeft, FiToggleRight, FiPhone, FiTrash2, FiRefreshCw, FiEye } from 'react-icons/fi'
 import api from '../../utils/api'
 import { formatDate } from '../../utils/helpers'
 import AdminLayout from '../../components/layout/AdminLayout'
@@ -144,6 +145,9 @@ const AdminUsers = () => {
                       </span>
                     </td>
                     <td className="px-4 py-3 flex items-center gap-2">
+                      <Link to={`/admin/users/${user._id}`} className="p-2 text-blue-500 hover:bg-blue-50 rounded-lg transition-all" title="View Analytics">
+                        <FiEye size={18} />
+                      </Link>
                       <button onClick={() => handleToggleStatus(user._id)}
                         className={`p-2 rounded-lg transition-all ${
                           user.isActive ? 'text-red-400 hover:bg-red-50' : 'text-green-500 hover:bg-green-50'

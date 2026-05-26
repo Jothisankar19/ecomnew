@@ -175,22 +175,18 @@ const ProductCard = ({ product, compact = false }) => {
   }
 
   return (
-    <motion.div
-      whileHover={{ y: -4 }}
-      transition={{ duration: 0.25 }}
-      className="product-card"
+    <div
+      className="product-card transition-transform duration-300 hover:-translate-y-1"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
       <Link to={`/products/${product.slug || product._id}`}>
         <div className="relative aspect-[2/3] md:aspect-[3/4] overflow-hidden bg-gray-50 group/image">
           {/* Scrollable Carousel Images Container */}
-          <motion.div
+          <div
             ref={scrollRef}
             onScroll={handleScroll}
-            className="absolute inset-0 flex overflow-x-auto snap-x snap-mandatory scrollbar-none scroll-smooth"
-            animate={{ scale: isHovered ? 1.04 : 1 }}
-            transition={{ duration: 0.4 }}
+            className={`absolute inset-0 flex overflow-x-auto snap-x snap-mandatory scrollbar-none transition-transform duration-300 ${isHovered ? 'md:scale-[1.04]' : ''}`}
           >
             {images.length > 0 ? (
               images.map((img, i) => (
@@ -215,7 +211,7 @@ const ProductCard = ({ product, compact = false }) => {
                 />
               </div>
             )}
-          </motion.div>
+          </div>
 
           {/* Navigation Arrows */}
           {images.length > 1 && (
@@ -349,7 +345,7 @@ const ProductCard = ({ product, compact = false }) => {
           )}
         </div>
       </Link>
-    </motion.div>
+    </div>
   )
 }
 

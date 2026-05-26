@@ -2,6 +2,21 @@ const Order = require('../models/Order');
 const Product = require('../models/Product');
 const User = require('../models/User');
 const Payment = require('../models/Payment');
+const Coupon = require('../models/Coupon');
+const Settings = require('../models/Settings');
+const Category = require('../models/Category');
+const mongoose = require('mongoose');
+
+const startOfToday = () => {
+  const d = new Date();
+  d.setHours(0, 0, 0, 0);
+  return d;
+};
+
+const startOfMonth = () => {
+  const now = new Date();
+  return new Date(now.getFullYear(), now.getMonth(), 1);
+};
 
 // @desc    Admin dashboard stats
 // @route   GET /api/admin/dashboard
@@ -201,6 +216,212 @@ exports.getTrendingOrders = async (req, res) => {
     }));
 
     res.json({ success: true, banners });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// @desc    Get specific user analytics
+// @route   GET /api/admin/users/:id/analytics
+exports.getUserAnalytics = async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id).select('-password');
+    if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+
+    const orders = await Order.find({ user: req.params.id })
+      .populate('items.product', 'name images price')
+      .sort({ createdAt: -1 });
+
+    const totalOrders = orders.length;
+    const totalSpent = orders.reduce((acc, order) => {
+      if (order.payment && order.payment.status === 'paid') {
+        return acc + order.pricing.total;
+      }
+      return acc;
+    }, 0);
+    
+    const averageOrderValue = totalOrders > 0 ? (totalSpent / totalOrders).toFixed(2) : 0;
+
+    res.json({
+      success: true,
+      user,
+      analytics: {
+        totalOrders,
+        totalSpent,
+        averageOrderValue
+      },
+      recentOrders: orders.slice(0, 10)
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// @desc    Live daily insights for admin dashboard (poll every 30s)
+// @route   GET /api/admin/live-insights
+exports.getLiveInsights = async (req, res) => {
+  try {
+    const today = startOfToday();
+    const lowStockThreshold = Number(req.query.lowStock) || 10;
+
+    const [
+      todayOrders,
+      todayCancelled,
+      todayRevenueAgg,
+      todayCouponOrders,
+      lowStockCount,
+      outOfStockCount,
+      activeCoupons,
+      recentOrders,
+      todayNewUsers
+    ] = await Promise.all([
+      Order.countDocuments({ createdAt: { $gte: today } }),
+      Order.countDocuments({ createdAt: { $gte: today }, orderStatus: 'cancelled' }),
+      Order.aggregate([
+        { $match: { createdAt: { $gte: today }, 'payment.status': 'paid' } },
+        { $group: { _id: null, total: { $sum: '$pricing.total' }, count: { $sum: 1 } } }
+      ]),
+      Order.countDocuments({ createdAt: { $gte: today }, 'coupon.code': { $exists: true, $ne: '' } }),
+      Product.countDocuments({ isActive: true, stock: { $gt: 0, $lte: lowStockThreshold } }),
+      Product.countDocuments({ isActive: true, stock: 0 }),
+      Coupon.find({ isActive: true }).select('code usedCount usageLimit showBanner isFestivalPromo discountValue discountType validUntil').sort({ usedCount: -1 }).limit(12),
+      Order.find().populate('user', 'name').sort({ createdAt: -1 }).limit(8).select('orderId orderStatus pricing.total createdAt user coupon'),
+      User.countDocuments({ role: 'customer', createdAt: { $gte: today } })
+    ]);
+
+    const couponActivity = await Promise.all(
+      activeCoupons.map(async (c) => {
+        const todayUses = await Order.countDocuments({
+          createdAt: { $gte: today },
+          'coupon.code': c.code
+        });
+        return {
+          _id: c._id,
+          code: c.code,
+          usedCount: c.usedCount,
+          usageLimit: c.usageLimit,
+          todayUses,
+          isFlash: c.isFestivalPromo || c.showBanner,
+          discountLabel: c.discountType === 'percentage' ? `${c.discountValue}%` : `₹${c.discountValue}`,
+          nearlyFull: c.usageLimit ? c.usedCount >= c.usageLimit * 0.9 : false
+        };
+      })
+    );
+
+    const flashGrabbers = couponActivity.filter((c) => c.isFlash).reduce((s, c) => s + c.todayUses, 0);
+
+    res.json({
+      success: true,
+      timestamp: new Date(),
+      daily: {
+        orders: todayOrders,
+        cancelled: todayCancelled,
+        revenue: todayRevenueAgg[0]?.total || 0,
+        paidOrders: todayRevenueAgg[0]?.count || 0,
+        couponOrders: todayCouponOrders,
+        newCustomers: todayNewUsers
+      },
+      inventory: { lowStock: lowStockCount, outOfStock: outOfStockCount, threshold: lowStockThreshold },
+      coupons: couponActivity,
+      flashSale: {
+        activeDeals: couponActivity.filter((c) => c.isFlash).length,
+        grabsToday: flashGrabbers
+      },
+      recentOrders: recentOrders.map((o) => ({
+        _id: o._id,
+        orderId: o.orderId,
+        status: o.orderStatus,
+        total: o.pricing?.total,
+        customer: o.user?.name,
+        coupon: o.coupon?.code,
+        createdAt: o.createdAt
+      }))
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// @desc    Category sales goals with live progress
+// @route   GET /api/admin/category-goals
+exports.getCategoryGoals = async (req, res) => {
+  try {
+    const settings = await Settings.findOne().populate('categoryGoals.categoryId', 'name slug');
+    const goals = (settings?.categoryGoals || []).filter((g) => g.isActive !== false && g.categoryId);
+
+    const monthStart = startOfMonth();
+    const categoryIds = goals.map((g) => g.categoryId._id || g.categoryId);
+
+    const salesByCategory = await Order.aggregate([
+      { $match: { createdAt: { $gte: monthStart }, 'payment.status': 'paid' } },
+      { $unwind: '$items' },
+      { $lookup: { from: 'products', localField: 'items.product', foreignField: '_id', as: 'product' } },
+      { $unwind: '$product' },
+      { $match: { 'product.category': { $in: categoryIds } } },
+      {
+        $group: {
+          _id: '$product.category',
+          units: { $sum: '$items.quantity' },
+          revenue: { $sum: { $multiply: ['$items.price', '$items.quantity'] } }
+        }
+      }
+    ]);
+
+    const salesMap = Object.fromEntries(
+      salesByCategory.map((s) => [s._id.toString(), { units: s.units, revenue: s.revenue }])
+    );
+
+    const enriched = goals.map((g) => {
+      const catId = (g.categoryId._id || g.categoryId).toString();
+      const current = salesMap[catId] || { units: 0, revenue: 0 };
+      const targetUnits = g.targetUnits || 0;
+      const targetRevenue = g.targetRevenue || 0;
+      const unitsPct = targetUnits > 0 ? Math.min(100, Math.round((current.units / targetUnits) * 100)) : 0;
+      const revenuePct = targetRevenue > 0 ? Math.min(100, Math.round((current.revenue / targetRevenue) * 100)) : 0;
+      const progressPct = Math.round((unitsPct + revenuePct) / 2) || 0;
+      const achieved = (targetUnits > 0 && current.units >= targetUnits) ||
+        (targetRevenue > 0 && current.revenue >= targetRevenue) ||
+        (targetUnits > 0 && targetRevenue > 0 && current.units >= targetUnits && current.revenue >= targetRevenue);
+
+      let milestone = 'starting';
+      if (progressPct >= 100 || achieved) milestone = 'achieved';
+      else if (progressPct >= 75) milestone = 'almost';
+      else if (progressPct >= 50) milestone = 'halfway';
+      else if (progressPct >= 25) milestone = 'momentum';
+
+      return {
+        _id: g._id,
+        categoryId: catId,
+        categoryName: g.categoryId.name || 'Category',
+        targetUnits,
+        targetRevenue,
+        currentUnits: current.units,
+        currentRevenue: current.revenue,
+        unitsPct,
+        revenuePct,
+        progressPct,
+        achieved,
+        surpriseUnlocked: achieved,
+        milestone,
+        surpriseTitle: g.surpriseTitle,
+        surpriseDescription: g.surpriseDescription,
+        inspirationQuote: g.inspirationQuote,
+        isActive: g.isActive !== false
+      };
+    });
+
+    const categories = await Category.find({ isActive: true }).select('name slug');
+
+    res.json({
+      success: true,
+      goals: enriched,
+      categories,
+      summary: {
+        total: enriched.length,
+        achieved: enriched.filter((g) => g.achieved).length,
+        inProgress: enriched.filter((g) => !g.achieved && g.progressPct > 0).length
+      }
+    });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }

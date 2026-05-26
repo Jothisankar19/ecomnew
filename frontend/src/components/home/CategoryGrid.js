@@ -114,7 +114,7 @@ const CategoryGrid = () => {
         name: cat.name,
         slug: cat.slug,
         desc: cat.description || 'Premium Collection',
-        img: cat.image?.url || img1,
+        img: typeof cat.image === 'string' ? cat.image : (cat.image?.url || img1),
         bg: gradients[i % gradients.length],
         group: i % 2 === 0 ? 'Premium' : 'Everyday',
         count: ''

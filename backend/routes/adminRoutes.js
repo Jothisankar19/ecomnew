@@ -3,7 +3,8 @@ const router = express.Router();
 const { protect, adminOnly } = require('../middleware/auth');
 const {
   getDashboardStats, getRevenueAnalytics, getAllUsers,
-  toggleUserStatus, deleteUser, getInventory, getTrendingOrders
+  toggleUserStatus, deleteUser, getInventory, getTrendingOrders, getUserAnalytics,
+  getLiveInsights, getCategoryGoals
 } = require('../controllers/adminController');
 
 // Public route — no auth needed (used by TrendingBanner on homepage)
@@ -13,8 +14,11 @@ router.get('/trending-orders', getTrendingOrders);
 router.use(protect, adminOnly);
 
 router.get('/dashboard', getDashboardStats);
+router.get('/live-insights', getLiveInsights);
+router.get('/category-goals', getCategoryGoals);
 router.get('/analytics/revenue', getRevenueAnalytics);
 router.get('/users', getAllUsers);
+router.get('/users/:id/analytics', getUserAnalytics);
 router.put('/users/:id/toggle-status', toggleUserStatus);
 router.delete('/users/:id', deleteUser);
 router.get('/inventory', getInventory);

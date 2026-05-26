@@ -1,5 +1,6 @@
 const Product = require('../models/Product');
 const cloudinary = require('../config/cloudinary');
+const cache = require('../utils/cache');
 
 // @desc    Get all products with filters
 // @route   GET /api/products
@@ -120,6 +121,7 @@ exports.createProduct = async (req, res) => {
       productData.images = await Promise.all(imagePromises);
     }
     const product = await Product.create(productData);
+    await cache.del('featured_products');
     res.status(201).json({ success: true, message: 'Product created successfully', product });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -168,6 +170,7 @@ exports.updateProduct = async (req, res) => {
     });
 
     await product.save();
+    await cache.del('featured_products');
     
     // Fetch again to populate
     product = await Product.findById(product._id).populate('category', 'name slug');
@@ -193,6 +196,7 @@ exports.deleteProduct = async (req, res) => {
       }
     }
     await product.deleteOne();
+    await cache.del('featured_products');
     res.json({ success: true, message: 'Product deleted successfully' });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -203,13 +207,22 @@ exports.deleteProduct = async (req, res) => {
 // @route   GET /api/products/featured
 exports.getFeaturedProducts = async (req, res) => {
   try {
+    const cached = await cache.get('featured_products');
+    if (cached) {
+      return res.json({ success: true, ...cached });
+    }
+
     const [featured, trending, newArrivals, bestSellers] = await Promise.all([
       Product.find({ isFeatured: true, isActive: true }).limit(8).populate('category', 'name'),
       Product.find({ isTrending: true, isActive: true }).limit(8).populate('category', 'name'),
       Product.find({ isNewArrival: true, isActive: true }).sort({ createdAt: -1 }).limit(8).populate('category', 'name'),
       Product.find({ isBestSeller: true, isActive: true }).sort({ sold: -1 }).limit(8).populate('category', 'name')
     ]);
-    res.json({ success: true, featured, trending, newArrivals, bestSellers });
+
+    const result = { featured, trending, newArrivals, bestSellers };
+    await cache.set('featured_products', result, 300); // 5 mins cache
+
+    res.json({ success: true, ...result });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }

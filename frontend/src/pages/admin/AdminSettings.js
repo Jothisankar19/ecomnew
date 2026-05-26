@@ -1,9 +1,11 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { Helmet } from 'react-helmet-async';
 import { FiUser, FiLock, FiSave, FiTruck } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 import AdminLayout from '../../components/layout/AdminLayout';
+import HomepageContentEditor from '../../components/admin/HomepageContentEditor';
+import AdminMaintenancePanel from '../../components/admin/AdminMaintenancePanel';
 import api from '../../utils/api';
 import { getMe } from '../../store/slices/authSlice';
 
@@ -74,7 +76,6 @@ const AdminSettings = () => {
     }
   };
 
-  // Handlers
   const handleProfileChange = (e) => {
     setProfileData({ ...profileData, [e.target.name]: e.target.value });
   };
@@ -124,7 +125,7 @@ const AdminSettings = () => {
   return (
     <AdminLayout>
       <Helmet>
-        <title>Settings — Kurti Elegance Admin</title>
+        <title>Settings â€” Kurti Elegance Admin</title>
       </Helmet>
 
       <div className="mb-6">
@@ -297,7 +298,7 @@ const AdminSettings = () => {
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                    Minimum Purchase Threshold (₹)
+                    Minimum Purchase Threshold (â‚¹)
                   </label>
                   <input
                     type="number"
@@ -365,6 +366,10 @@ const AdminSettings = () => {
           </form>
         </div>
       </div>
+
+      <HomepageContentEditor />
+
+      <AdminMaintenancePanel />
     </AdminLayout>
   );
 };

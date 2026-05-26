@@ -1,12 +1,18 @@
 const HeroSlide = require('../models/HeroSlide');
 const cloudinary = require('../config/cloudinary');
+const cache = require('../utils/cache');
 
 // @desc    Get active hero slides (Public)
 // @route   GET /api/hero-slides
 // @access  Public
 exports.getActiveSlides = async (req, res) => {
   try {
-    const slides = await HeroSlide.find({ active: true }).sort({ order: 1 });
+    const cached = await cache.get('active_hero_slides');
+    if (cached) {
+      return res.json({ success: true, count: cached.length, slides: cached });
+    }
+    const slides = await HeroSlide.find({ active: true }).populate('categoryId', 'name slug _id').sort({ order: 1 });
+    await cache.set('active_hero_slides', slides, 600); // 10 minutes cache
     res.json({ success: true, count: slides.length, slides });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -18,7 +24,7 @@ exports.getActiveSlides = async (req, res) => {
 // @access  Private/Admin
 exports.getAllSlides = async (req, res) => {
   try {
-    const slides = await HeroSlide.find({}).sort({ order: 1 });
+    const slides = await HeroSlide.find({}).populate('categoryId', 'name slug _id').sort({ order: 1 });
     res.json({ success: true, count: slides.length, slides });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -30,7 +36,7 @@ exports.getAllSlides = async (req, res) => {
 // @access  Private/Admin
 exports.createSlide = async (req, res) => {
   try {
-    const { image, subtitle, title, highlight, badge, cta, link, textPosition, active, order } = req.body;
+    const { image, subtitle, title, highlight, badge, cta, categoryId, textPosition, active, order } = req.body;
 
     if (!image || !image.url || !image.public_id) {
       return res.status(400).json({ success: false, message: 'Slide image is required' });
@@ -43,13 +49,17 @@ exports.createSlide = async (req, res) => {
       highlight,
       badge,
       cta,
-      link,
+      categoryId,
       textPosition: textPosition || 'center',
       active,
       order: order || 0
     });
 
-    res.status(201).json({ success: true, slide });
+    // Populate the category reference
+    const populatedSlide = await HeroSlide.findById(slide._id).populate('categoryId', 'name slug _id');
+
+    await cache.del('active_hero_slides');
+    res.status(201).json({ success: true, slide: populatedSlide });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -60,7 +70,7 @@ exports.createSlide = async (req, res) => {
 // @access  Private/Admin
 exports.updateSlide = async (req, res) => {
   try {
-    const { image, subtitle, title, highlight, badge, cta, link, textPosition, active, order } = req.body;
+    const { image, subtitle, title, highlight, badge, cta, categoryId, textPosition, active, order } = req.body;
 
     let slide = await HeroSlide.findById(req.params.id);
     if (!slide) {
@@ -78,10 +88,14 @@ exports.updateSlide = async (req, res) => {
 
     slide = await HeroSlide.findByIdAndUpdate(
       req.params.id,
-      { image, subtitle, title, highlight, badge, cta, link, textPosition, active, order },
+      { image, subtitle, title, highlight, badge, cta, categoryId, textPosition, active, order },
       { new: true, runValidators: true }
     );
 
+    // Populate the category reference
+    slide = await HeroSlide.findById(req.params.id).populate('categoryId', 'name slug _id');
+
+    await cache.del('active_hero_slides');
     res.json({ success: true, slide });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -106,6 +120,7 @@ exports.deleteSlide = async (req, res) => {
     }
 
     await slide.deleteOne();
+    await cache.del('active_hero_slides');
     res.json({ success: true, message: 'Hero slide removed successfully' });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -125,6 +140,7 @@ exports.toggleSlideActive = async (req, res) => {
     slide.active = !slide.active;
     await slide.save();
 
+    await cache.del('active_hero_slides');
     res.json({ success: true, slide });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -147,6 +163,7 @@ exports.updateSlidesOrder = async (req, res) => {
     );
 
     await Promise.all(promises);
+    await cache.del('active_hero_slides');
     res.json({ success: true, message: 'Slides reordered successfully' });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });

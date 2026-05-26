@@ -10,51 +10,56 @@ import { formatPrice } from '../../utils/helpers';
 import AdminLayout from '../../components/layout/AdminLayout';
 import toast from 'react-hot-toast';
 
-const StockAndPriceEditor = ({ product, onSave, onCancel }) => {
-  const [stock, setStock] = useState(product.stock);
-  const [price, setPrice] = useState(product.price);
+const InventoryFieldEditor = ({ product, field, onSave, onCancel }) => {
+  const initial = field === 'price' ? product.price : product.stock;
+  const [value, setValue] = useState(initial);
   const [loading, setLoading] = useState(false);
 
   const handleSave = async () => {
+    const num = Number(value);
+    if (Number.isNaN(num) || num < 0) {
+      return toast.error(field === 'price' ? 'Enter a valid price' : 'Enter a valid stock quantity');
+    }
     setLoading(true);
     try {
-      await api.put(`/products/${product._id}`, { stock: Number(stock), price: Number(price) });
-      onSave(product._id, { stock: Number(stock), price: Number(price) });
-      toast.success('Inventory updated!');
-    } catch (err) {
-      toast.error('Failed to update inventory');
+      const payload = field === 'price' ? { price: num } : { stock: num };
+      await api.put(`/products/${product._id}`, payload);
+      onSave(product._id, payload);
+      toast.success(field === 'price' ? 'Price updated!' : 'Stock updated!');
+    } catch {
+      toast.error(field === 'price' ? 'Failed to update price' : 'Failed to update stock');
     }
     setLoading(false);
   };
 
   return (
-    <div className="flex items-center gap-2">
-      <div className="flex flex-col gap-1">
-        <input
-          type="number"
-          value={price}
-          onChange={(e) => setPrice(e.target.value)}
-          className="w-20 bg-gray-50 border border-gray-200 rounded-lg px-2 py-1 text-gray-800 text-sm text-center focus:outline-none focus:border-yellow-400"
-          placeholder="Price"
-          min="0"
-        />
-        <input
-          type="number"
-          value={stock}
-          onChange={(e) => setStock(e.target.value)}
-          className="w-20 bg-gray-50 border border-gray-200 rounded-lg px-2 py-1 text-gray-800 text-sm text-center focus:outline-none focus:border-yellow-400"
-          placeholder="Stock"
-          min="0"
-        />
-      </div>
-      <div className="flex flex-col gap-1">
-        <button onClick={handleSave} disabled={loading} className="p-1.5 bg-green-500/20 text-green-400 rounded-lg hover:bg-green-500/30 transition-all">
-          <FiCheck size={14} />
-        </button>
-        <button onClick={onCancel} className="p-1.5 bg-red-500/20 text-red-400 rounded-lg hover:bg-red-500/30 transition-all">
-          <FiX size={14} />
-        </button>
-      </div>
+    <div className="flex items-center gap-1.5 flex-wrap">
+      <input
+        type="number"
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        className="w-24 bg-white border border-yellow-300 rounded-lg px-2.5 py-1.5 text-gray-800 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400/30"
+        placeholder={field === 'price' ? 'Price ₹' : 'Qty'}
+        min="0"
+        autoFocus
+      />
+      <button
+        type="button"
+        onClick={handleSave}
+        disabled={loading}
+        title={field === 'price' ? 'Save price' : 'Save stock'}
+        className="p-1.5 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-all disabled:opacity-50"
+      >
+        <FiCheck size={14} />
+      </button>
+      <button
+        type="button"
+        onClick={onCancel}
+        title="Cancel"
+        className="p-1.5 bg-gray-100 text-gray-500 rounded-lg hover:bg-gray-200 transition-all"
+      >
+        <FiX size={14} />
+      </button>
     </div>
   );
 };
@@ -65,7 +70,8 @@ const AdminInventory = () => {
   const [outOfStock, setOutOfStock] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [editingId, setEditingId] = useState(null);
+  const [priceEditId, setPriceEditId] = useState(null);
+  const [stockEditId, setStockEditId] = useState(null);
   const [activeTab, setActiveTab] = useState('all');
   const [lowStockThreshold, setLowStockThreshold] = useState(10);
 
@@ -87,7 +93,18 @@ const AdminInventory = () => {
     setProducts(update(products));
     setLowStockProducts(update(lowStockProducts));
     setOutOfStock(update(outOfStock));
-    setEditingId(null);
+    setPriceEditId(null);
+    setStockEditId(null);
+  };
+
+  const startPriceEdit = (productId) => {
+    setStockEditId(null);
+    setPriceEditId(productId);
+  };
+
+  const startStockEdit = (productId) => {
+    setPriceEditId(null);
+    setStockEditId(productId);
   };
 
   const displayProducts = activeTab === 'all'
@@ -107,7 +124,7 @@ const AdminInventory = () => {
 
       <div className="mb-6">
         <h1 className="font-display text-2xl font-bold text-gray-800">Inventory Management</h1>
-        <p className="text-gray-400 text-sm">Monitor and update product stock levels</p>
+        <p className="text-gray-400 text-sm">Update price and stock separately for each product</p>
       </div>
 
       {/* Summary Cards */}
@@ -215,21 +232,20 @@ const AdminInventory = () => {
                 <th className="text-left px-4 py-3 text-gray-500 text-xs font-semibold uppercase tracking-wider">SOLD</th>
                 <th className="text-left px-4 py-3 text-gray-500 text-xs font-semibold uppercase tracking-wider">STOCK</th>
                 <th className="text-left px-4 py-3 text-gray-500 text-xs font-semibold uppercase tracking-wider">STATUS</th>
-                <th className="text-right px-4 py-3 text-gray-500 text-xs font-semibold uppercase tracking-wider">EDIT</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
                 [...Array(8)].map((_, i) => (
                   <tr key={i} className="border-b border-gray-50">
-                    {[...Array(7)].map((_, j) => (
+                    {[...Array(6)].map((_, j) => (
                       <td key={j} className="px-4 py-3"><div className="h-4 bg-gray-100 rounded animate-pulse w-20" /></td>
                     ))}
                   </tr>
                 ))
               ) : filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="text-center py-12 text-gray-400">No products found</td>
+                  <td colSpan={6} className="text-center py-12 text-gray-400">No products found</td>
                 </tr>
               ) : (
                 filtered.map((product) => (
@@ -248,25 +264,55 @@ const AdminInventory = () => {
                       <span className="text-gray-500 text-sm">{product.category?.name || '—'}</span>
                     </td>
                     <td className="px-4 py-3">
-                      <span className="text-gray-800 text-sm font-bold">{formatPrice(product.price)}</span>
+                      {priceEditId === product._id ? (
+                        <InventoryFieldEditor
+                          product={product}
+                          field="price"
+                          onSave={handleInventoryUpdate}
+                          onCancel={() => setPriceEditId(null)}
+                        />
+                      ) : (
+                        <div className="flex items-center gap-2">
+                          <span className="text-gray-800 text-sm font-bold">{formatPrice(product.price)}</span>
+                          <button
+                            type="button"
+                            onClick={() => startPriceEdit(product._id)}
+                            className="p-1.5 text-gray-400 hover:text-yellow-600 hover:bg-yellow-50 rounded-lg transition-all"
+                            title="Change price"
+                          >
+                            <FiEdit2 size={14} />
+                          </button>
+                        </div>
+                      )}
                     </td>
                     <td className="px-4 py-3">
                       <span className="text-gray-500 text-sm">{product.sold || 0}</span>
                     </td>
                     <td className="px-4 py-3">
-                      {editingId === product._id ? (
-                        <StockAndPriceEditor
+                      {stockEditId === product._id ? (
+                        <InventoryFieldEditor
                           product={product}
+                          field="stock"
                           onSave={handleInventoryUpdate}
-                          onCancel={() => setEditingId(null)}
+                          onCancel={() => setStockEditId(null)}
                         />
                       ) : (
-                        <span className={`font-bold text-sm ${
-                          product.stock === 0 ? 'text-red-400' :
-                          product.stock <= lowStockThreshold ? 'text-yellow-400' : 'text-green-400'
-                        }`}>
-                          {product.stock}
-                        </span>
+                        <div className="flex items-center gap-2">
+                          <span className={`font-bold text-sm ${
+                            product.stock === 0 ? 'text-red-400' :
+                            product.stock <= lowStockThreshold ? 'text-yellow-400' : 'text-green-400'
+                          }`}>
+                            {product.stock}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => startStockEdit(product._id)}
+                            className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
+                            title="Change stock"
+                          >
+                            <FiEdit2 size={14} />
+                          </button>
+                        </div>
                       )}
                     </td>
                     <td className="px-4 py-3">
@@ -278,16 +324,6 @@ const AdminInventory = () => {
                         {product.stock === 0 ? 'Out of Stock' :
                          product.stock <= lowStockThreshold ? 'Low Stock' : 'In Stock'}
                       </span>
-                    </td>
-                    <td className="px-4 py-3 text-right">
-                      {editingId !== product._id && (
-                        <button
-                          onClick={() => setEditingId(product._id)}
-                          className="p-2 text-gray-400 hover:text-yellow-600 hover:bg-yellow-50 rounded-lg transition-all"
-                        >
-                          <FiEdit2 size={15} />
-                        </button>
-                      )}
                     </td>
                   </tr>
                 ))

@@ -10,7 +10,11 @@ const HeroSlideSchema = new mongoose.Schema({
   highlight: { type: String, default: 'Kurti Collections' },
   badge: { type: String, default: 'Flat 50% OFF' },
   cta: { type: String, default: 'Shop Now' },
-  link: { type: String, default: '/products' },
+  categoryId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Category',
+    default: null
+  },
   textPosition: { type: String, enum: ['left', 'center', 'right'], default: 'center' },
   active: { type: Boolean, default: true },
   order: { type: Number, default: 0 }
