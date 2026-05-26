@@ -2,11 +2,33 @@ import React, { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Helmet } from 'react-helmet-async'
-import { FiSearch, FiUser, FiShield, FiToggleLeft, FiToggleRight, FiPhone, FiTrash2, FiRefreshCw, FiEye } from 'react-icons/fi'
+import { FiSearch, FiUser, FiShield, FiToggleLeft, FiToggleRight, FiPhone, FiTrash2, FiRefreshCw, FiEye, FiUsers, FiUserCheck, FiUserX } from 'react-icons/fi'
 import api from '../../utils/api'
 import { formatDate } from '../../utils/helpers'
 import AdminLayout from '../../components/layout/AdminLayout'
 import toast from 'react-hot-toast'
+
+/* ─── Stat Card ──────────────────────────────────────────────── */
+const StatCard = ({ icon: Icon, label, value, subtext, gradient, delay = 0 }) => (
+  <motion.div
+    initial={{ opacity: 0, y: 24 }}
+    animate={{ opacity: 1, y: 0 }}
+    transition={{ duration: 0.5, delay }}
+    className="relative overflow-hidden bg-white rounded-2xl border border-gray-100 shadow-sm p-5 flex items-start gap-4 group hover:shadow-md transition-shadow"
+  >
+    {/* Gradient glow */}
+    <div className={`absolute -top-8 -right-8 w-24 h-24 rounded-full opacity-10 blur-2xl ${gradient}`} />
+
+    <div className={`flex-shrink-0 w-12 h-12 rounded-xl flex items-center justify-center ${gradient} text-white shadow-lg`}>
+      <Icon size={22} />
+    </div>
+    <div className="min-w-0">
+      <p className="text-gray-400 text-xs font-semibold uppercase tracking-wider mb-1">{label}</p>
+      <h3 className="text-2xl font-extrabold text-gray-800 leading-tight">{value}</h3>
+      {subtext && <p className="text-gray-400 text-xs mt-0.5">{subtext}</p>}
+    </div>
+  </motion.div>
+)
 
 const AdminUsers = () => {
   const [users, setUsers] = useState([])
@@ -15,6 +37,7 @@ const AdminUsers = () => {
   const [search, setSearch] = useState('')
   const [roleFilter, setRoleFilter] = useState('')
   const [page, setPage] = useState(1)
+  const [summary, setSummary] = useState(null)
   const limit = 15
 
   const fetchUsers = async () => {
@@ -26,6 +49,7 @@ const AdminUsers = () => {
       const { data } = await api.get('/admin/users', { params })
       setUsers(data.users || [])
       setTotal(data.total || 0)
+      if (data.summary) setSummary(data.summary)
     } catch (err) { console.error(err) }
     setLoading(false)
   }
@@ -36,6 +60,17 @@ const AdminUsers = () => {
     try {
       const { data } = await api.put(`/admin/users/${userId}/toggle-status`)
       setUsers(users.map(u => u._id === userId ? { ...u, isActive: data.user.isActive } : u))
+      
+      // Update local summary state to reflect toggled status
+      setSummary(prev => {
+        if (!prev) return prev
+        const wasActive = users.find(u => u._id === userId)?.isActive
+        return {
+          ...prev,
+          activeUsers: wasActive ? prev.activeUsers - 1 : prev.activeUsers + 1,
+          inactiveUsers: wasActive ? prev.inactiveUsers + 1 : prev.inactiveUsers - 1
+        }
+      })
       toast.success(data.message)
     } catch { toast.error('Failed to update user status') }
   }
@@ -43,9 +78,21 @@ const AdminUsers = () => {
   const handleDeleteUser = async (userId) => {
     if (!window.confirm('Are you sure you want to PERMANENTLY remove this user? This action cannot be undone.')) return
     try {
+      const userToDelete = users.find(u => u._id === userId)
       await api.delete(`/admin/users/${userId}`)
       setUsers(users.filter(u => u._id !== userId))
       setTotal(prev => prev - 1)
+      
+      // Update local summary state
+      setSummary(prev => {
+        if (!prev) return prev
+        return {
+          ...prev,
+          totalUsers: prev.totalUsers - 1,
+          activeUsers: userToDelete?.isActive ? prev.activeUsers - 1 : prev.activeUsers,
+          inactiveUsers: !userToDelete?.isActive ? prev.inactiveUsers - 1 : prev.inactiveUsers
+        }
+      })
       toast.success('User permanently removed')
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to delete user')
@@ -63,6 +110,34 @@ const AdminUsers = () => {
           <h1 className="text-2xl font-bold text-gray-800">Users</h1>
           <p className="text-gray-400 text-sm">{total} registered users</p>
         </div>
+      </div>
+
+      {/* ─── Summary Stat Cards ─────────────────────────────── */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+        <StatCard
+          icon={FiUsers}
+          label="Total Users"
+          value={summary?.totalUsers ?? '—'}
+          subtext="Registered accounts"
+          gradient="bg-gradient-to-br from-blue-500 to-indigo-600"
+          delay={0}
+        />
+        <StatCard
+          icon={FiUserCheck}
+          label="Active Users"
+          value={summary?.activeUsers ?? '—'}
+          subtext="Allowed standard access"
+          gradient="bg-gradient-to-br from-emerald-500 to-teal-600"
+          delay={0.05}
+        />
+        <StatCard
+          icon={FiUserX}
+          label="Not Active"
+          value={summary?.inactiveUsers ?? '—'}
+          subtext="Blocked / Suspended accounts"
+          gradient="bg-gradient-to-br from-rose-500 to-red-600"
+          delay={0.1}
+        />
       </div>
 
       {/* Filters */}

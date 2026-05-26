@@ -1,12 +1,34 @@
 import React, { useEffect, useState, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Helmet } from 'react-helmet-async'
-import { FiPlus, FiEdit2, FiTrash2, FiX, FiTag, FiUpload, FiLoader, FiImage } from 'react-icons/fi'
+import { FiPlus, FiEdit2, FiTrash2, FiX, FiTag, FiUpload, FiLoader, FiImage, FiCheckCircle, FiXCircle } from 'react-icons/fi'
 import api from '../../utils/api'
 import AdminLayout from '../../components/layout/AdminLayout'
 import toast from 'react-hot-toast'
 
 const inputCls = 'w-full bg-white border border-gray-200 rounded-xl px-4 py-2.5 text-gray-800 placeholder-gray-400 text-sm focus:outline-none focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/20 transition-all'
+
+/* ─── Stat Card ──────────────────────────────────────────────── */
+const StatCard = ({ icon: Icon, label, value, subtext, gradient, delay = 0 }) => (
+  <motion.div
+    initial={{ opacity: 0, y: 24 }}
+    animate={{ opacity: 1, y: 0 }}
+    transition={{ duration: 0.5, delay }}
+    className="relative overflow-hidden bg-white rounded-2xl border border-gray-100 shadow-sm p-5 flex items-start gap-4 group hover:shadow-md transition-shadow"
+  >
+    {/* Gradient glow */}
+    <div className={`absolute -top-8 -right-8 w-24 h-24 rounded-full opacity-10 blur-2xl ${gradient}`} />
+
+    <div className={`flex-shrink-0 w-12 h-12 rounded-xl flex items-center justify-center ${gradient} text-white shadow-lg`}>
+      <Icon size={22} />
+    </div>
+    <div className="min-w-0">
+      <p className="text-gray-400 text-xs font-semibold uppercase tracking-wider mb-1">{label}</p>
+      <h3 className="text-2xl font-extrabold text-gray-800 leading-tight">{value}</h3>
+      {subtext && <p className="text-gray-400 text-xs mt-0.5">{subtext}</p>}
+    </div>
+  </motion.div>
+)
 
 // ── Category Image Uploader ───────────────────────────────────
 const CategoryImageUploader = ({ currentImage, onUpload, uploading }) => {
@@ -119,7 +141,7 @@ const CategoryModal = ({ category, onClose, onSave }) => {
       className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4"
       onClick={onClose}>
       <motion.div initial={{ scale: 0.96, y: 16, opacity: 0 }} animate={{ scale: 1, y: 0, opacity: 1 }} exit={{ scale: 0.96, opacity: 0 }}
-        className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden"
+        className="bg-white rounded-3xl shadow-2xl w-full max-w-2xl overflow-hidden"
         onClick={e => e.stopPropagation()}>
 
         {/* Header */}
@@ -133,37 +155,53 @@ const CategoryModal = ({ category, onClose, onSave }) => {
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
-          {/* Image Upload */}
-          <CategoryImageUploader currentImage={imageUrl} onUpload={handleImageUpload} uploading={uploading} />
-
-          {/* Name */}
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-1.5">Category Name <span className="text-red-500">*</span></label>
-            <input value={form.name} onChange={e => handleNameChange(e.target.value)} className={inputCls} required placeholder="e.g. Anarkali Kurtis" />
-          </div>
-
-          {/* Slug */}
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-1.5">URL Slug</label>
-            <input value={form.slug} onChange={e => setForm({ ...form, slug: e.target.value })} className={`${inputCls} text-gray-500`} placeholder="auto-generated" />
-          </div>
-
-          {/* Description */}
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-1.5">Description</label>
-            <textarea value={form.description} onChange={e => setForm({ ...form, description: e.target.value })}
-              className={`${inputCls} resize-none`} rows={2} placeholder="Short description of this category" />
-          </div>
-
-          {/* Active toggle */}
-          <label className="flex items-center gap-3 cursor-pointer p-3 bg-gray-50 rounded-xl border border-gray-100">
-            <div className={`relative w-10 h-5 rounded-full transition-colors ${form.isActive ? 'bg-yellow-500' : 'bg-gray-300'}`}
-              onClick={() => setForm({ ...form, isActive: !form.isActive })}>
-              <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${form.isActive ? 'translate-x-5' : 'translate-x-0.5'}`} />
+        <form onSubmit={handleSubmit} className="p-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            
+            {/* Left Column: Image & Status Toggle */}
+            <div className="space-y-5">
+              {/* Image Upload */}
+              <CategoryImageUploader currentImage={imageUrl} onUpload={handleImageUpload} uploading={uploading} />
+              
+              {/* Active Toggle */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1.5">Visibility</label>
+                <label className="flex items-center gap-3 cursor-pointer p-4 bg-gray-50 rounded-xl border border-gray-100 hover:bg-gray-100/50 transition-colors">
+                  <div className={`relative w-10 h-5 rounded-full transition-colors flex-shrink-0 ${form.isActive ? 'bg-yellow-500' : 'bg-gray-300'}`}
+                    onClick={() => setForm({ ...form, isActive: !form.isActive })}>
+                    <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${form.isActive ? 'translate-x-5' : 'translate-x-0.5'}`} />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-gray-700 text-sm font-semibold">Active Status</p>
+                    <p className="text-gray-400 text-xs mt-0.5">Visible to customers in the catalog</p>
+                  </div>
+                </label>
+              </div>
             </div>
-            <span className="text-gray-700 text-sm font-medium">Active — visible to customers</span>
-          </label>
+
+            {/* Right Column: Name, Slug, Description */}
+            <div className="space-y-4">
+              {/* Name */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1.5">Category Name <span className="text-red-500">*</span></label>
+                <input value={form.name} onChange={e => handleNameChange(e.target.value)} className={inputCls} required placeholder="e.g. Anarkali Kurtis" />
+              </div>
+
+              {/* Slug */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1.5">URL Slug</label>
+                <input value={form.slug} onChange={e => setForm({ ...form, slug: e.target.value })} className={`${inputCls} text-gray-500`} placeholder="auto-generated" />
+              </div>
+
+              {/* Description */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1.5">Description</label>
+                <textarea value={form.description} onChange={e => setForm({ ...form, description: e.target.value })}
+                  className={`${inputCls} resize-none`} rows={3} placeholder="Short description of this category..." />
+              </div>
+            </div>
+
+          </div>
         </form>
 
         {/* Footer */}
@@ -209,6 +247,11 @@ const AdminCategories = () => {
     else setCategories([...categories, saved])
   }
 
+  // Derived Category Counts
+  const totalCategories = categories.length
+  const activeCategories = categories.filter(c => c.isActive !== false).length
+  const inactiveCategories = categories.filter(c => c.isActive === false).length
+
   return (
     <AdminLayout>
       <Helmet><title>Categories — Admin</title></Helmet>
@@ -222,6 +265,34 @@ const AdminCategories = () => {
           className="flex items-center gap-2 bg-yellow-500 hover:bg-yellow-400 text-white font-bold text-sm px-5 py-2.5 rounded-xl transition-colors shadow-sm shadow-yellow-200">
           <FiPlus size={16} /> Add Category
         </button>
+      </div>
+
+      {/* ─── Summary Stat Cards ─────────────────────────────── */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+        <StatCard
+          icon={FiTag}
+          label="Total Categories"
+          value={totalCategories}
+          subtext="Available collections"
+          gradient="bg-gradient-to-br from-blue-500 to-indigo-600"
+          delay={0}
+        />
+        <StatCard
+          icon={FiCheckCircle}
+          label="Active Categories"
+          value={activeCategories}
+          subtext="Visible on storefront"
+          gradient="bg-gradient-to-br from-emerald-500 to-teal-600"
+          delay={0.05}
+        />
+        <StatCard
+          icon={FiXCircle}
+          label="Inactive Categories"
+          value={inactiveCategories}
+          subtext="Hidden from customers"
+          gradient="bg-gradient-to-br from-rose-500 to-red-600"
+          delay={0.1}
+        />
       </div>
 
       {loading ? (

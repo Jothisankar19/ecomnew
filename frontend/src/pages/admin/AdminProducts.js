@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Helmet } from 'react-helmet-async'
-import { FiPlus, FiSearch, FiEdit2, FiTrash2, FiX, FiUpload, FiCheck, FiImage, FiLoader } from 'react-icons/fi'
+import { FiPlus, FiSearch, FiEdit2, FiTrash2, FiX, FiUpload, FiCheck, FiImage, FiLoader, FiPackage, FiTrendingUp, FiAlertCircle, FiBox } from 'react-icons/fi'
 import api from '../../utils/api'
 import { formatPrice } from '../../utils/helpers'
 import AdminLayout from '../../components/layout/AdminLayout'
@@ -488,6 +488,66 @@ const AdminProducts = () => {
           className="flex items-center gap-2 bg-yellow-500 hover:bg-yellow-400 text-white font-bold text-sm px-5 py-2.5 rounded-xl transition-colors shadow-sm shadow-yellow-200">
           <FiPlus size={16} /> Add Product
         </button>
+      </div>
+
+      {/* ─── Summary Stat Cards ─────────────────────────────── */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        {[
+          {
+            label: 'Total Products',
+            value: total,
+            icon: <FiBox size={20} />,
+            gradient: 'from-indigo-500 to-violet-600',
+            bg: 'bg-indigo-50',
+            border: 'border-indigo-100',
+            text: 'text-indigo-600',
+          },
+          {
+            label: 'In Stock',
+            value: products.filter(p => p.stock > 0).length,
+            icon: <FiPackage size={20} />,
+            gradient: 'from-emerald-500 to-green-600',
+            bg: 'bg-emerald-50',
+            border: 'border-emerald-100',
+            text: 'text-emerald-600',
+          },
+          {
+            label: 'Out of Stock',
+            value: products.filter(p => p.stock === 0).length,
+            icon: <FiAlertCircle size={20} />,
+            gradient: 'from-rose-500 to-red-600',
+            bg: 'bg-rose-50',
+            border: 'border-rose-100',
+            text: 'text-rose-600',
+          },
+          {
+            label: 'Trending',
+            value: products.filter(p => p.isTrending).length,
+            icon: <FiTrendingUp size={20} />,
+            gradient: 'from-orange-500 to-amber-500',
+            bg: 'bg-orange-50',
+            border: 'border-orange-100',
+            text: 'text-orange-600',
+          },
+        ].map((card, i) => (
+          <motion.div
+            key={card.label}
+            initial={{ opacity: 0, y: 18 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: i * 0.08, type: 'spring', stiffness: 260, damping: 20 }}
+            className={`relative overflow-hidden ${card.bg} ${card.border} border rounded-2xl p-5 flex items-center gap-4 shadow-sm hover:shadow-md transition-shadow cursor-default group`}
+          >
+            {/* Decorative gradient blob */}
+            <div className={`absolute -top-6 -right-6 w-20 h-20 rounded-full bg-gradient-to-br ${card.gradient} opacity-10 group-hover:opacity-20 transition-opacity blur-xl`} />
+            <div className={`w-11 h-11 rounded-xl bg-gradient-to-br ${card.gradient} flex items-center justify-center text-white shadow-lg flex-shrink-0`}>
+              {card.icon}
+            </div>
+            <div>
+              <p className="text-gray-500 text-[10px] font-bold uppercase tracking-widest">{card.label}</p>
+              <p className={`text-2xl font-black ${card.text} leading-none mt-1`}>{card.value}</p>
+            </div>
+          </motion.div>
+        ))}
       </div>
 
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 mb-5 flex gap-3">

@@ -277,7 +277,28 @@ exports.getAllOrders = async (req, res) => {
       { $group: { _id: '$orderStatus', count: { $sum: 1 }, revenue: { $sum: '$pricing.total' } } }
     ]);
 
-    res.json({ success: true, total, orders, stats });
+    // Today's orders aggregation
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+    const todayEnd = new Date();
+    todayEnd.setHours(23, 59, 59, 999);
+
+    const todayStats = await Order.aggregate([
+      { $match: { createdAt: { $gte: todayStart, $lte: todayEnd } } },
+      { $group: { _id: null, count: { $sum: 1 }, revenue: { $sum: '$pricing.total' } } }
+    ]);
+
+    const totalRevenue = stats.reduce((sum, s) => sum + (s.revenue || 0), 0);
+    const todayOrders = todayStats[0]?.count || 0;
+    const todayRevenue = todayStats[0]?.revenue || 0;
+    const cancelledOrders = stats.find(s => s._id === 'cancelled')?.count || 0;
+    const returnedOrders = (stats.find(s => s._id === 'returned')?.count || 0) + (stats.find(s => s._id === 'return_requested')?.count || 0);
+    const deliveredOrders = stats.find(s => s._id === 'delivered')?.count || 0;
+
+    res.json({
+      success: true, total, orders, stats,
+      summary: { totalRevenue, todayOrders, todayRevenue, cancelledOrders, returnedOrders, deliveredOrders }
+    });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }

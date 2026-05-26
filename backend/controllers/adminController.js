@@ -136,7 +136,22 @@ exports.getAllUsers = async (req, res) => {
 
     const total = await User.countDocuments(query);
     const users = await User.find(query).sort({ createdAt: -1 }).skip((page - 1) * limit).limit(Number(limit));
-    res.json({ success: true, total, users });
+
+    // Calculate overall user stats
+    const totalUsers = await User.countDocuments();
+    const activeUsers = await User.countDocuments({ isActive: true });
+    const inactiveUsers = await User.countDocuments({ isActive: false });
+
+    res.json({
+      success: true,
+      total,
+      users,
+      summary: {
+        totalUsers,
+        activeUsers,
+        inactiveUsers
+      }
+    });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }

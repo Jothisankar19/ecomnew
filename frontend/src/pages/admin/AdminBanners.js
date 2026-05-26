@@ -1005,9 +1005,30 @@ const GenericBannersManager = ({ type }) => {
   );
 };
 
+/* ─── Stat Card ──────────────────────────────────────────────── */
+const StatCard = ({ icon: Icon, label, value, subtext, gradient, delay = 0 }) => (
+  <motion.div
+    initial={{ opacity: 0, y: 24 }}
+    animate={{ opacity: 1, y: 0 }}
+    transition={{ duration: 0.5, delay }}
+    className="relative overflow-hidden bg-white rounded-2xl border border-gray-100 shadow-sm p-5 flex items-start gap-4 group hover:shadow-md transition-shadow"
+  >
+    {/* Gradient glow */}
+    <div className={`absolute -top-8 -right-8 w-24 h-24 rounded-full opacity-10 blur-2xl ${gradient}`} />
+
+    <div className={`flex-shrink-0 w-12 h-12 rounded-xl flex items-center justify-center ${gradient} text-white shadow-lg`}>
+      <Icon size={22} />
+    </div>
+    <div className="min-w-0">
+      <p className="text-gray-400 text-xs font-semibold uppercase tracking-wider mb-1">{label}</p>
+      <h3 className="text-2xl font-extrabold text-gray-800 leading-tight">{value}</h3>
+      {subtext && <p className="text-gray-400 text-xs mt-0.5">{subtext}</p>}
+    </div>
+  </motion.div>
+)
+
 const PromoBannersManager = () => <GenericBannersManager type="promo" />;
 const OccasionBannersManager = () => <GenericBannersManager type="occasion" />;
-
 
 const AdminBanners = () => {
   const [activeTab, setActiveTab] = useState('hero')
@@ -1015,6 +1036,7 @@ const AdminBanners = () => {
   const [loading, setLoading] = useState(true)
   const [modalSlide, setModalSlide] = useState(null)
   const [showModal, setShowModal] = useState(false)
+  const [settingsCounts, setSettingsCounts] = useState({ promo: 0, occasion: 0 })
   const dispatch = useDispatch()
 
   const fetchSlides = () => {
@@ -1030,10 +1052,22 @@ const AdminBanners = () => {
       })
   }
 
+  const fetchSettings = () => {
+    api.get('/settings')
+      .then(({ data }) => {
+        setSettingsCounts({
+          promo: data.settings?.promoBanners?.length || 0,
+          occasion: data.settings?.occasionBanners?.length || 0
+        })
+      })
+      .catch(() => {})
+  }
+
   useEffect(() => {
     fetchSlides()
+    fetchSettings()
     dispatch(fetchCategories())
-  }, [])
+  }, [activeTab]) // Re-fetch on tab change to sync any updates
 
   const handleDelete = async (id) => {
     if (!window.confirm('Are you sure you want to delete this hero slider banner?')) return
@@ -1090,6 +1124,8 @@ const AdminBanners = () => {
     }
   }
 
+  const activeSlides = slides.filter(s => s.active !== false).length
+
   return (
     <AdminLayout>
       <Helmet><title>Homepage Banners — Admin</title></Helmet>
@@ -1105,6 +1141,34 @@ const AdminBanners = () => {
             <FiPlus size={16} /> Add Hero Banner
           </button>
         )}
+      </div>
+
+      {/* ─── Summary Stat Cards ─────────────────────────────── */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+        <StatCard
+          icon={FiPlus}
+          label="Hero Slider"
+          value={slides.length}
+          subtext={`${activeSlides} active / ${slides.length - activeSlides} hidden`}
+          gradient="bg-gradient-to-br from-blue-500 to-indigo-600"
+          delay={0}
+        />
+        <StatCard
+          icon={FiImage}
+          label="Promo Banners"
+          value={settingsCounts.promo}
+          subtext="Main layout grids"
+          gradient="bg-gradient-to-br from-emerald-500 to-teal-600"
+          delay={0.05}
+        />
+        <StatCard
+          icon={FiImage}
+          label="Occasion Banners"
+          value={settingsCounts.occasion}
+          subtext="Thematic collections"
+          gradient="bg-gradient-to-br from-rose-500 to-red-600"
+          delay={0.1}
+        />
       </div>
 
       <div className="flex gap-4 mb-8 border-b border-gray-100 pb-2">

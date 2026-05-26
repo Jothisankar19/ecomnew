@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Helmet } from 'react-helmet-async'
-import { FiSearch, FiEdit2, FiX, FiTruck, FiPackage, FiTrash2, FiRefreshCw } from 'react-icons/fi'
+import { FiSearch, FiEdit2, FiX, FiTruck, FiPackage, FiTrash2, FiRefreshCw, FiCalendar, FiDollarSign, FiCheckCircle, FiRotateCcw, FiXCircle } from 'react-icons/fi'
 import api from '../../utils/api'
 import { formatPrice, formatDate, getStatusColor, getStatusLabel } from '../../utils/helpers'
 import AdminLayout from '../../components/layout/AdminLayout'
@@ -11,6 +11,28 @@ const statusOptions = [
   'all', 'processing', 'confirmed', 'packed', 'shipped',
   'out_for_delivery', 'delivered', 'cancelled', 'return_requested', 'returned'
 ]
+
+/* ─── Stat Card ──────────────────────────────────────────────── */
+const StatCard = ({ icon: Icon, label, value, subtext, gradient, delay = 0 }) => (
+  <motion.div
+    initial={{ opacity: 0, y: 24 }}
+    animate={{ opacity: 1, y: 0 }}
+    transition={{ duration: 0.5, delay }}
+    className="relative overflow-hidden bg-white rounded-2xl border border-gray-100 shadow-sm p-5 flex items-start gap-4 group hover:shadow-md transition-shadow"
+  >
+    {/* Gradient glow */}
+    <div className={`absolute -top-8 -right-8 w-24 h-24 rounded-full opacity-10 blur-2xl ${gradient}`} />
+
+    <div className={`flex-shrink-0 w-12 h-12 rounded-xl flex items-center justify-center ${gradient} text-white shadow-lg`}>
+      <Icon size={22} />
+    </div>
+    <div className="min-w-0">
+      <p className="text-gray-400 text-xs font-semibold uppercase tracking-wider mb-1">{label}</p>
+      <h3 className="text-2xl font-extrabold text-gray-800 leading-tight">{value}</h3>
+      {subtext && <p className="text-gray-400 text-xs mt-0.5">{subtext}</p>}
+    </div>
+  </motion.div>
+)
 
 const UpdateStatusModal = ({ order, onClose, onUpdate }) => {
   const [status, setStatus] = useState(order.orderStatus)
@@ -101,6 +123,7 @@ const AdminOrders = () => {
   const [statusFilter, setStatusFilter] = useState('all')
   const [page, setPage] = useState(1)
   const [selectedOrder, setSelectedOrder] = useState(null)
+  const [summary, setSummary] = useState(null)
   const limit = 15
 
   const fetchOrders = async () => {
@@ -112,6 +135,7 @@ const AdminOrders = () => {
       const { data } = await api.get('/orders/admin/all', { params })
       setOrders(data.orders || [])
       setTotal(data.total || 0)
+      if (data.summary) setSummary(data.summary)
     } catch (err) { console.error(err) }
     setLoading(false)
   }
@@ -144,6 +168,42 @@ const AdminOrders = () => {
           <h1 className="text-2xl font-bold text-gray-800">Orders</h1>
           <p className="text-gray-400 text-sm">{total} total orders</p>
         </div>
+      </div>
+
+      {/* ─── Summary Stat Cards ─────────────────────────────── */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <StatCard
+          icon={FiCalendar}
+          label="Today's Orders"
+          value={summary?.todayOrders ?? '—'}
+          subtext={summary?.todayRevenue ? formatPrice(summary.todayRevenue) + ' revenue' : 'No orders yet'}
+          gradient="bg-gradient-to-br from-blue-500 to-blue-600"
+          delay={0}
+        />
+        <StatCard
+          icon={FiCheckCircle}
+          label="Delivered"
+          value={summary?.deliveredOrders ?? '—'}
+          subtext="Successfully completed"
+          gradient="bg-gradient-to-br from-green-500 to-green-600"
+          delay={0.05}
+        />
+        <StatCard
+          icon={FiRotateCcw}
+          label="Returns"
+          value={summary?.returnedOrders ?? '—'}
+          subtext="Returned & requested"
+          gradient="bg-gradient-to-br from-amber-500 to-orange-500"
+          delay={0.1}
+        />
+        <StatCard
+          icon={FiXCircle}
+          label="Cancelled"
+          value={summary?.cancelledOrders ?? '—'}
+          subtext="Orders cancelled"
+          gradient="bg-gradient-to-br from-rose-500 to-red-600"
+          delay={0.15}
+        />
       </div>
 
       {/* Filters */}
@@ -254,3 +314,4 @@ const AdminOrders = () => {
 }
 
 export default AdminOrders
+

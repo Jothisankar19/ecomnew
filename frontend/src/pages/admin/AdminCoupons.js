@@ -1049,6 +1049,53 @@ const AdminCoupons = () => {
         </button>
       </div>
 
+      {/* ─── Summary Stat Cards ─────────────────────────────── */}
+      {!loading && (
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+          {(() => {
+            const now = new Date();
+            const totalCount = coupons.length;
+            let activeCount = 0, expiredCount = 0, scheduledCount = 0;
+
+            coupons.forEach(c => {
+              const start = c.validFrom ? new Date(c.validFrom) : null;
+              const expiry = c.validUntil || c.expiresAt ? new Date(c.validUntil || c.expiresAt) : null;
+              if (!c.isActive) return;
+              if (start && now < start) { scheduledCount++; return; }
+              if (expiry && now > expiry) { expiredCount++; return; }
+              activeCount++;
+            });
+
+            const cards = [
+              { label: 'Total Coupons', value: totalCount, icon: <FiTag size={20} />, gradient: 'from-violet-500 to-purple-600', bg: 'bg-violet-50', border: 'border-violet-100', text: 'text-violet-600' },
+              { label: 'Active', value: activeCount, icon: <FiZap size={20} />, gradient: 'from-emerald-500 to-green-600', bg: 'bg-emerald-50', border: 'border-emerald-100', text: 'text-emerald-600' },
+              { label: 'Expired', value: expiredCount, icon: <FiClock size={20} />, gradient: 'from-rose-500 to-red-600', bg: 'bg-rose-50', border: 'border-rose-100', text: 'text-rose-600' },
+              { label: 'Scheduled', value: scheduledCount, icon: <FiTrendingUp size={20} />, gradient: 'from-amber-500 to-yellow-600', bg: 'bg-amber-50', border: 'border-amber-100', text: 'text-amber-600' },
+            ];
+
+            return cards.map((card, i) => (
+              <motion.div
+                key={card.label}
+                initial={{ opacity: 0, y: 18 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: i * 0.08, type: 'spring', stiffness: 260, damping: 20 }}
+                className={`relative overflow-hidden ${card.bg} ${card.border} border rounded-2xl p-5 flex items-center gap-4 shadow-sm hover:shadow-md transition-shadow cursor-default group`}
+              >
+                {/* Decorative gradient blob */}
+                <div className={`absolute -top-6 -right-6 w-20 h-20 rounded-full bg-gradient-to-br ${card.gradient} opacity-10 group-hover:opacity-20 transition-opacity blur-xl`} />
+                <div className={`w-11 h-11 rounded-xl bg-gradient-to-br ${card.gradient} flex items-center justify-center text-white shadow-lg flex-shrink-0`}>
+                  {card.icon}
+                </div>
+                <div>
+                  <p className="text-gray-500 text-[10px] font-bold uppercase tracking-widest">{card.label}</p>
+                  <p className={`text-2xl font-black ${card.text} leading-none mt-1`}>{card.value}</p>
+                </div>
+              </motion.div>
+            ));
+          })()}
+        </div>
+      )}
+
       {loading ? (
         <div className="space-y-3">
           {[...Array(5)].map((_, i) => <div key={i} className="h-20 skeleton rounded-2xl animate-pulse" />)}
